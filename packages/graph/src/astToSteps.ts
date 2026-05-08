@@ -3248,6 +3248,7 @@ function rewriteOrderAliases(
         test: rewriteOrderAliases(value.test, aliasMap),
         alternatives: value.alternatives.map((alternative) => ({
           when: rewriteOrderAliases(alternative.when, aliasMap),
+          // oxlint-disable-next-line unicorn/no-thenable -- 'then' is AST field name, not a Promise
           then: rewriteOrderAliases(alternative.then, aliasMap),
         })),
         ...(value.else !== undefined && {
@@ -3259,6 +3260,7 @@ function rewriteOrderAliases(
         ...value,
         alternatives: value.alternatives.map((alternative) => ({
           when: alternative.when,
+          // oxlint-disable-next-line unicorn/no-thenable -- 'then' is AST field name, not a Promise
           then: rewriteOrderAliases(alternative.then, aliasMap),
         })),
         ...(value.else !== undefined && {
