@@ -9,6 +9,7 @@
     "packages/*"
   ],
   "scripts": {
+    "_:chk": "pnpm format && pnpm lint:fix && pnpm install && pnpm build && pnpm test:coverage",
     "build": "pnpm run -r build",
     "changeset": "changeset",
     "prepare": "sh ./scripts/setup-git-hooks.sh",
@@ -16,18 +17,19 @@
     "release": "pnpm build && changeset publish",
     "setup:hooks": "sh ./scripts/setup-git-hooks.sh",
     "typecheck": "pnpm run -r typecheck",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "oxlint --ignore-pattern '**/grammar.js' .",
     "lint:fix": "pnpm run lint --fix",
-    "format": "oxfmt --write .",
-    "format:check": "oxfmt --check ."
+    "format": "oxfmt --write '**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts,json,jsonc,yaml,yml,css,scss,html,md,mdx}'",
+    "format:check": "oxfmt --check '**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts,json,jsonc,yaml,yml,css,scss,html,md,mdx}'"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.30.0",
+    "@changesets/cli": "^2.31.0",
     "@vitest/coverage-istanbul": "catalog:",
-    "oxfmt": "^0.44.0",
-    "oxlint": "^1.59.0",
+    "oxfmt": "^0.48.0",
+    "oxlint": "^1.63.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
