@@ -109,3 +109,16 @@ export {
   type RepeatStepConfig,
   type ShortestPathStepConfig,
 } from "./traversal/index.js";
+
+// ============================================================================
+// Filter Steps (Wave 2 - category modules)
+// ============================================================================
+
+export {
+  FilterElementsStep,
+  FilterPredicateStep,
+  DedupStep,
+  type FilterElementsStepConfig,
+  type FilterPredicateStepConfig,
+  type DedupStepConfig,
+} from "./filter/index.js";
