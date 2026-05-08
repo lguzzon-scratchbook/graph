@@ -10,8 +10,6 @@
 
 import type { Step, StepConfig } from "./base.js";
 import type { QueryContext } from "../QueryContext.js";
-import type { GraphSource } from "../Graph.js";
-import type { TraversalPath } from "../Traversals.js";
 import type { AST } from "../AST.js";
 
 /**
@@ -25,28 +23,30 @@ export type StepCategory =
   | "aggregate"
   | "mutation"
   | "control"
-  | "setop"
+  | "setops"
   | "other";
 
 /**
  * Constructor interface for step classes.
  * All step classes must implement this interface to be registered.
+ * Uses permissive typing to support modular steps with varying config shapes.
  */
-export interface StepConstructor<TConfig extends StepConfig = StepConfig> {
+export interface StepConstructor {
   /** The step name (used for registry lookup) */
   readonly stepName: string;
 
   /** The step category */
   readonly category: StepCategory;
 
-  /** Create a new step instance from config */
-  new (config: TConfig): Step<TConfig>;
+  /** Create a new step instance from config - accepts any config type */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  new (...args: any[]): Step<StepConfig>;
 
   /** Deserialize from JSON */
-  fromJSON(json: unknown): Step<TConfig> | null;
+  fromJSON(json: unknown): Step<StepConfig> | null;
 
   /** Create from AST node (optional - for steps that can be created from AST) */
-  fromAST?(astNode: AST, context: ASTConversionContext): Step<TConfig> | null;
+  fromAST?(astNode: AST, context: ASTConversionContext): Step<StepConfig> | null;
 }
 
 /**
@@ -66,7 +66,7 @@ export interface ASTConversionContext {
 /**
  * Step definition in the registry.
  */
-export interface StepDefinition<TConfig extends StepConfig = StepConfig> {
+export interface StepDefinition {
   /** Step name (case-sensitive, unique) */
   name: string;
 
@@ -74,7 +74,7 @@ export interface StepDefinition<TConfig extends StepConfig = StepConfig> {
   category: StepCategory;
 
   /** The step constructor */
-  constructor: StepConstructor<TConfig>;
+  constructor: StepConstructor;
 }
 
 /**
@@ -92,7 +92,7 @@ export class StepRegistry {
   /**
    * Register a step definition.
    */
-  public register<TConfig extends StepConfig>(def: StepDefinition<TConfig>): void {
+  public register(def: StepDefinition): void {
     if (this.#steps.has(def.name)) {
       throw new Error(`Step "${def.name}" is already registered`);
     }
@@ -116,7 +116,7 @@ export class StepRegistry {
   /**
    * Create a step instance from a name and config.
    */
-  public create<TConfig extends StepConfig>(name: string, config: TConfig): Step<TConfig> {
+  public create(name: string, config: Record<string, unknown>): Step<StepConfig> {
     const def = this.get(name);
     if (!def) {
       throw new Error(`Unknown step: ${name}`);
@@ -133,7 +133,7 @@ export class StepRegistry {
       return null;
     }
 
-    const [name, config] = json;
+    const [name] = json;
     if (typeof name !== "string") {
       return null;
     }

@@ -2,11 +2,11 @@
 
 # **tests**
 
-Test directory for fetch step implementations. Validates FetchVerticesStep, FetchEdgesStep, CartesianFetchStep via stepRegistry integration, JSON (de)serialization round-trips, partial config cloning.
+Fetch step test implementations. Validates `FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep` via `stepRegistry` integration, static property verification, constructor config interfaces, JSON round-trips, partial config cloning.
 
 ## Contents
 
-- [fetch.steps.test.ts](./fetch.steps.test.ts) - Validates FetchVerticesStep, FetchEdgesStep, CartesianFetchStep through stepRegistry integration, JSON serialization, and config cloning.
+- [fetch.steps.test.ts](./fetch.steps.test.ts) - Validates static `stepName` and `category` properties, constructor config interfaces (`vertexLabels`, `edgeLabels`, `condition`), JSON round-trip serialization, `clone` partial config merging, and strict `fromJSON` error handling for `FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep`.
 
 ## Behavioral Contracts
 

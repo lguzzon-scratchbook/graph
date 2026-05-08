@@ -8,7 +8,7 @@ Control flow step implementations for graph query processing. Wraps base step cl
 
 ### Step Implementations
 
-- [ForeachStep.ts](./ForeachStep.ts) — Extends `BaseForeachStep`, static `stepName="Foreach"`, `category="control"`, `fromJSON` validates `["Foreach", { variable, listExpression? }, [...nestedSteps]]` format with null-safety for malformed inputs, `fromAST` returns null, `clone` deep-clones nested steps via `steps.map((step) => step.clone())`.
+- [ForeachStep.ts](./ForeachStep.ts) — Extends `BaseForeachStep`, static `stepName="Foreach"`, `category="control"`, `fromJSON` validates `["Foreach", { variable: string, listExpression?, stepLabels? }, [...nestedSteps]]`, returns null if `json.length < 3` or name mismatch, `fromAST` returns null, `clone` spreads `stepLabels` array `[...config.stepLabels]` and deep-clones nested steps.
 - [OptionalMatchStep.ts](./OptionalMatchStep.ts) — Extends `BaseOptionalMatchStep`, static `stepName="OptionalMatch"`, `category="control"`, `fromJSON` validates `["OptionalMatch", { variables: string[] }, [...nestedSteps]]`, yields empty nested steps on deserialization (full reconstruction requires registry), `fromAST` returns null, `clone` maps nested step cloning.
 - [OrderStep.ts](./OrderStep.ts) — Extends `BaseOrderStep`, static `stepName="Order"`, `category="control"`, `fromJSON` deserializes `["Order", { directions: [...] }]`, validates array structure and name match, `fromAST` returns null, `clone` copies `directions` and `stepLabels` with optional override.
 - [RangeStep.ts](./RangeStep.ts) — Extends `BaseRangeStep`, static `stepName="Range"`, `category="control"`, `fromJSON` validates `["Range", { start: number, end: number }]`, `fromAST` returns null, `clone` merges partial config for pagination bounds.
@@ -25,7 +25,7 @@ Control flow step implementations for graph query processing. Wraps base step cl
 
 **Tuple Structure**: All steps use `[name: string, config: object, nestedSteps?: array]` format.
 
-- `ForeachStep`: `["Foreach", { variable: string, listExpression?: LiteralExpression | PropertyExpression }, Step[]]` — returns null if `json.length < 3` or name mismatch.
+- `ForeachStep`: `["Foreach", { variable: string, listExpression?, stepLabels? }, Step[]]` — returns null if `json.length < 3` or name mismatch.
 - `OptionalMatchStep`: `["OptionalMatch", { variables: string[] }, Step[]]` — full deserialization requires `stepRegistry` for nested step reconstruction.
 - `OrderStep`: `["Order", { directions: { key: string; direction: OrderDirection; nulls?: NullsOrdering }[] }]` — validates `directions` existence.
 - `RangeStep`: `["Range", { start: number, end: number }]` — strict validation on numeric bounds.
@@ -56,7 +56,7 @@ All classes extend base implementations from `../../Steps.js` (`BaseForeachStep`
 
 ### Clone with Partial Merge Pattern
 
-`clone(partial?: Partial<Config>): Step` creates new instances with config object spread `{ ...this.config, ...partial }`, ensuring immutable update semantics. Nested steps arrays cloned via `.map((step) => step.clone())` preserving deep immutability.
+`clone(partial?: Partial<Config>): Step` creates new instances with config object spread `{ ...this.config, ...partial }`, ensuring immutable update semantics. Nested steps arrays cloned via `.map((step) => step.clone())` preserving deep immutability. Array fields like `stepLabels` explicitly spread `[...config.stepLabels]` to avoid reference sharing.
 
 ## File Relationships
 

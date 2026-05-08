@@ -2,7 +2,7 @@
 
 # mutation
 
-Directory contains concrete mutation step implementations (CreateStep, DeleteStep, MergeStep, RemoveStep, SetStep) extending base classes with registry integration and JSON deserialization. Each class auto-registers with stepRegistry on module load for factory instantiation via step names, implementing serialization contracts for graph mutation persistence and query reconstruction.
+Concrete mutation step implementations extending base classes. Registry integration. JSON deserialization.
 
 ## Contents
 
@@ -10,24 +10,24 @@ Directory contains concrete mutation step implementations (CreateStep, DeleteSte
 
 | File                             | Description                                                                                                                                                                                                                                                                                     |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [CreateStep.ts](./CreateStep.ts) | `CreateStep` extends `BaseCreateStep`. Static `stepName = "Create"`, `category = "mutation"`. `fromJSON()` parses `["Create", { patterns: [...] }]`. `clone()` merges partial configs. Auto-registers with stepRegistry on load.                                                                |
+| [CreateStep.ts](./CreateStep.ts) | `CreateStep` extends `BaseCreateStep`. Static `stepName = "Create"`, `category = "mutation"`. `fromJSON()` validates format `["Create", { vertices: [...], edges?: [...] }]`. `clone()` merges partial, copies `stepLabels`. Auto-registers with stepRegistry on load.                          |
 | [DeleteStep.ts](./DeleteStep.ts) | `DeleteStep` extends `BaseDeleteStep`. Static `stepName = "Delete"`, `category = "mutation"`. `fromJSON()` parses `["Delete", { variables: string[], detach?: boolean }]`. `clone()` merges partial configs. Auto-registers with stepRegistry on load.                                          |
 | [MergeStep.ts](./MergeStep.ts)   | `MergeStep` extends `BaseMergeStep`. Static `stepName = "Merge"`, `category = "mutation"`. `fromJSON()` parses `["Merge", { pattern: {...}, onCreate?: [...], onMatch?: [...] }]`. `clone()` copies `stepLabels` via spread `[...config.stepLabels]`. Auto-registers with stepRegistry on load. |
 | [RemoveStep.ts](./RemoveStep.ts) | `RemoveStep` extends `BaseRemoveStep`. Static `stepName = "Remove"`, `category = "mutation"`. `fromJSON()` parses `["Remove", { items: [...] }]`. `clone()` merges partial configs. Auto-registers with stepRegistry on load.                                                                   |
-| [SetStep.ts](./SetStep.ts)       | `SetStep` extends `BaseSetStep`. Static `stepName = "Set"`, `category = "mutation"`. `fromJSON()` validates array length ≥2, name field `"Set"`, and `assignments` presence, returns `null` on invalid. `clone()` merges partial configs. Auto-registers with stepRegistry on load.             |
-| [index.ts](./index.ts)           | Barrel export: `CreateStep`, `SetStep`, `DeleteStep`, `RemoveStep`, `MergeStep` classes plus `CreateStepConfig`, `SetStepConfig`, `DeleteStepConfig`, `RemoveStepConfig`, `MergeStepConfig` types.                                                                                              |
+| [SetStep.ts](./SetStep.ts)       | `SetStep` extends `BaseSetStep`. Static `stepName = "Set"`, `category = "mutation"`. `fromJSON()` validates array length ≥2, name field `"Set"`, `assignments` presence, returns `null` on invalid. `clone()` merges partial configs. Auto-registers with stepRegistry on load.                 |
+| [index.ts](./index.ts)           | Exports `CreateStep`, `SetStep`, `DeleteStep`, `RemoveStep`, `MergeStep`. Types: `CreateStepConfig`, `CreateVertexConfig`, `CreateEdgeConfig`, `SetStepConfig`, `DeleteStepConfig`, `RemoveStepConfig`, `MergeStepConfig`.                                                                      |
 
 ## Subdirectories
 
-| Directory                | Description                                                                                                                               |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [**tests**/./**tests**/) | Unit tests for mutation step registry integration, JSON [stepName, config] tuple round-trips, and factory instantiation via stepRegistry. |
+| Directory                | Description                                                                                                                                  |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [**tests**/](__tests__/) | Tests mutation step classes. Validates registry integration, JSON serialization round-trips, factory pattern instantiation via stepRegistry. |
 
 ## Behavioral Contracts
 
 **JSON Serialization Formats**
 
-- CreateStep: `["Create", { patterns: [...] }]`
+- CreateStep: `["Create", { vertices: [...], edges?: [...] }]`
 - DeleteStep: `["Delete", { variables: string[], detach?: boolean }]`
 - MergeStep: `["Merge", { pattern: {...}, onCreate?: [...], onMatch?: [...] }]`
 - RemoveStep: `["Remove", { items: [...] }]`
@@ -35,11 +35,11 @@ Directory contains concrete mutation step implementations (CreateStep, DeleteSte
 
 **Registry Registration Side Effect**
 
-All step modules execute `stepRegistry.register({ name: [stepName], category: "mutation", constructor: [Class] })` on module load, where `[stepName]` matches the static `stepName` property.
+All step modules execute `stepRegistry.register({ name: [stepName], category: "mutation", constructor: [Class] })` on module load, where `[stepName]` matches static `stepName` property.
 
 **Deserialization Validation**
 
-`fromJSON()` returns `null` for: `null` input, non-array input, array length < 2, mismatch between first element and static `stepName`, or missing required config fields (`patterns`, `variables`, `assignments`, `items`, `pattern`).
+`fromJSON()` returns `null` for: `null` input, non-array input, array length < 2, mismatch between first element and static `stepName`, or missing required config fields (`vertices`, `variables`, `assignments`, `items`, `pattern`).
 
 **AST Conversion**
 
@@ -53,7 +53,7 @@ All `fromAST(_astNode: AST, _context: ASTConversionContext)` methods currently r
 
 **Exported Config Types**
 
-`CreateStepConfig`, `SetStepConfig`, `DeleteStepConfig`, `RemoveStepConfig`, `MergeStepConfig`
+`CreateStepConfig`, `CreateVertexConfig`, `CreateEdgeConfig`, `SetStepConfig`, `DeleteStepConfig`, `RemoveStepConfig`, `MergeStepConfig`
 
 ## File Relationships
 
@@ -75,12 +75,12 @@ All import `stepRegistry` and `ASTConversionContext` from `../StepRegistry.js`, 
 
 **Registry Auto-Registration**
 
-Side effect pattern: Module load triggers `stepRegistry.register()` binding the class constructor to its `stepName` in the `"mutation"` category, enabling factory instantiation via `stepRegistry.create("Create", config)`.
+Side effect pattern: Module load triggers `stepRegistry.register()` binding class constructor to its `stepName` in `"mutation"` category, enabling factory instantiation via `stepRegistry.create("Create", config)`.
 
 **Factory Deserialization**
 
-Static `fromJSON()` implements validation-then-construct: Validates the tuple format `[name, config]` matches expected `stepName`, returns `null` rather than throwing on invalid input.
+Static `fromJSON()` implements validation-then-construct: Validates tuple format `[name, config]` matches expected `stepName`, returns `null` rather than throwing on invalid input.
 
 **Barrel Re-export**
 
-`index.ts` aggregates all public symbols from the directory, providing the import surface for consumers.
+`index.ts` aggregates all public symbols from directory, providing import surface for consumers.

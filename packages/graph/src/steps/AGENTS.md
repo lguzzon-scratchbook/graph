@@ -8,13 +8,13 @@ Modularized graph traversal step implementations providing registry-enabled wrap
 
 ### Core Infrastructure
 
-**[StepRegistry.ts](./StepRegistry.ts)** — Type-safe central registry replicating `FunctionRegistry` pattern. Exports `StepCategory` union (`"fetch" | "traversal" | "filter" | "transform" | "aggregate" | "mutation" | "control" | "setop" | "other"`), `StepConstructor<TConfig>` interface, `StepDefinition<TConfig>`, `StepRegistry` class with `#steps: Map<string, StepDefinition>`, and global `stepRegistry` singleton. Methods: `register` (throws `'Step "${def.name}" is already registered'` on duplicate), `get`, `has`, `create` (throws `"Unknown step: ${name}"`), `fromJSON` (expects `[name, config, steps?]` tuple), `stepNames`, `stepsInCategory`, `categories`.
+**[StepRegistry.ts](./StepRegistry.ts)** — Type-safe central registry replicating `FunctionRegistry` pattern. Exports `StepCategory` union (`"fetch" | "traversal" | "filter" | "transform" | "aggregate" | "mutation" | "control" | "setops" | "other"`), `StepConstructor<TConfig>` interface, `StepDefinition<TConfig>`, `StepRegistry` class with `#steps: Map<string, StepDefinition>`, and global `stepRegistry` singleton. Methods: `register` (throws `'Step "${def.name}" is already registered'` on duplicate), `get`, `has`, `create` (throws `"Unknown step: ${name}"`), `fromJSON` (expects `[name, config, steps?]` tuple), `stepNames`, `stepsInCategory`, `categories`.
 
-**[index.ts](./index.ts)** — Barrel export aggregating base classes from `Steps.js`, registry symbols from `StepRegistry.js`, and categorized step modules from 8 subdirectories. Exports `Step`, `ContainerStep`, `Traverser`, `createTraverser`, `stringifySteps`, `StepConfig`, `StepStringToken`, `StepTokenColorizers` (base); `StepRegistry`, `stepRegistry`, `isKnownStep`, `createStepFromJSON`, `StepConstructor`, `StepDefinition`, `StepCategory`, `ASTConversionContext` (registry); plus fetch, traversal, filter, aggregate, mutation, control, setops, and transform step classes.
+**[index.ts](./index.ts)** — Barrel export aggregating base classes from `Steps.js`, registry symbols from `StepRegistry.js`, and categorized step modules from 8 subdirectories. Exports `Step`, `ContainerStep`, `Traverser`, `createTraverser`, `stringifySteps`, `StepConfig`, `StepTokenColorizers` (base); `StepRegistry`, `stepRegistry`, `isKnownStep`, `createStepFromJSON`, `StepConstructor`, `StepDefinition`, `StepCategory`, `ASTConversionContext` (registry); plus fetch, traversal, filter, aggregate, mutation, control, setops, and transform step classes.
 
 ### Deprecated Re-exports
 
-**[base.ts](./base.ts)** — Transitional re-export of `Step`, `ContainerStep`, `Traverser`, `createTraverser`, `stringifySteps`, `StepConfig`, `StepStringToken`, `StepTokenColorizers` from `../Steps.js`. Definitions remain in source file.
+**[base.ts](./base.ts)** — Transitional re-export of `Step`, `ContainerStep`, `Traverser`, `createTraverser`, `stringifySteps`, `StepConfig`, `StepTokenColorizers` from `../Steps.js`. Definitions remain in source file.
 
 **[conditions.ts](./conditions.ts)** — Deprecated re-export of condition evaluation system from `Steps.js`. Exports `evaluateCondition`, `resolveConditionValue`, `stringifyCondition`, `stringifyConditionValueRef`, `compare`, and condition type unions (`Condition`, `BinaryCondition`, `UnaryCondition`, `LogicalCondition`, `NotCondition`, `InCondition`, `ExpressionCondition`, `LabelWildcardCondition`, `IsLabeledCondition`) plus operator enums.
 
@@ -26,11 +26,11 @@ Registry wrappers for aggregation operations. Exports `CountStep`, `SumStep`, `A
 
 ### [control/](./control/)
 
-Control flow steps for query execution. Exports `RangeStep`, `OrderStep`, `OptionalMatchStep`, `WithStep`, `UnwindStep`, `ForeachStep` with static `category = "control"`. JSON formats: `["Range", { start: number, end: number }]`, `["Order", { directions: [...] }]`, `["OptionalMatch", { variables: string[] }, [...nestedSteps]]`, `["With", { distinct: boolean, items: [...] }]`, `["Unwind", { expression: {...}, alias: string }]`, `["Foreach", { variable, listExpression? }, [...nestedSteps]]`.
+Control flow steps extending base implementations with registry integration. Exports `RangeStep`, `OrderStep`, `OptionalMatchStep`, `WithStep`, `UnwindStep`, `ForeachStep` with static `category = "control"`. `fromJSON` validates tuple formats: `["Range", { start: number, end: number }]`, `["Order", { directions: [...] }]`, `["OptionalMatch", { variables: string[] }, [...nestedSteps]]`, `["With", { distinct: boolean, items: [...] }]`, `["Unwind", { expression: {...}, alias: string }]`, `["Foreach", { variable: string, listExpression?, stepLabels? }, [...nestedSteps]]`. `fromAST` returns `null` (unimplemented). `clone` merges partial config with array spreading for `stepLabels`. Auto-registers with `stepRegistry` on module load.
 
 ### [fetch/](./fetch/)
 
-Data retrieval steps. Exports `FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep` with static `category = "fetch"`. JSON formats: `["FetchVertices", { vertexLabels?: string[], ids?: string[] }]`, `["FetchEdges", { edgeLabels?: string[], ids?: string[] }]`, `["CartesianFetch", { vertexLabels?: string[], condition?: Condition }]`.
+Registry-enabled fetch steps extending base implementations. Exports `FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep` with static `category = "fetch"`. `fromJSON` validates: `["FetchVertices", { vertexLabels?: string[], ids?: string[] }]`, `["FetchEdges", { edgeLabels?: string[], ids?: string[] }]`, `["CartesianFetch", { vertexLabels?: string[], condition?: Condition, stepLabels?: string[] }]`. `fromJSON` returns `null` for null input, wrong names, or missing required fields. `fromAST` returns `null`. `clone` copies arrays via spread (`...vertexLabels`, `...ids`, `...stepLabels`). Auto-registers on module load.
 
 ### [filter/](./filter/)
 
@@ -38,11 +38,11 @@ Element filtering steps. Exports `FilterElementsStep`, `FilterPredicateStep`, `D
 
 ### [mutation/](./mutation/)
 
-Graph mutation steps. Exports `CreateStep`, `SetStep`, `DeleteStep`, `RemoveStep`, `MergeStep` with static `category = "mutation"`. JSON formats: `["Create", { patterns: [...] }]`, `["Set", { assignments: [...] }]`, `["Delete", { variables: string[], detach?: boolean }]`, `["Remove", { items: [...] }]`, `["Merge", { pattern: {...}, onCreate?: [...], onMatch?: [...] }]`.
+Concrete mutation step implementations extending base classes. Exports `CreateStep`, `SetStep`, `DeleteStep`, `RemoveStep`, `MergeStep` with static `category = "mutation"`. `fromJSON` validates: `["Create", { vertices: [...], edges?: [...] }]`, `["Set", { assignments: [...] }]`, `["Delete", { variables: string[], detach?: boolean }]`, `["Remove", { items: [...] }]`, `["Merge", { pattern: {...}, onCreate?: [...], onMatch?: [...] }]`. Returns `null` for null input, non-array, length < 2, name mismatch, or missing required fields (`vertices`, `variables`, `assignments`, `items`, `pattern`). `clone` merges partial config. Auto-registers on module load.
 
 ### [setops/](./setops/)
 
-Set operation steps. Exports `UnionStep`, `IntersectStep`, `QueryUnionStep`, `MultiQueryStep` with static `category = "setops"`. JSON formats: `["Union", {}, [...nestedSteps]]`, `["Intersect", {}, [...nestedSteps]]`, `["QueryUnion"|"QueryUnionAll", {all: boolean}, ...branches]`, `["MultiQuery", {}, [...statements]]`.
+Set operation steps extending base classes. Exports `UnionStep`, `IntersectStep`, `QueryUnionStep`, `MultiQueryStep` with static `category = "setops"`. JSON formats: `["Union", {}, [...nestedSteps]]` (returns empty steps; nested deserialization TODO), `["Intersect", {}, [...nestedSteps]]`, `["QueryUnion"|"QueryUnionAll", { all: boolean }, ...branches]`, `["MultiQuery", {}, [...statements]]` (returns empty statements; recursive deserialization TODO). `fromAST` returns `null`. Auto-registers on module load.
 
 ### [transform/](./transform/)
 
@@ -50,7 +50,7 @@ Element transformation steps. Exports `MapElementsStep`, `ValuesStep`, `Property
 
 ### [traversal/](./traversal/)
 
-Graph traversal steps. Exports `VertexStep`, `EdgeStep`, `RepeatStep`, `ShortestPathStep` with static `category = "traversal"`. JSON formats: `["Vertex", { direction, edgeLabels? }]`, `["Edge", { direction, edgeLabels? }]`, `["Repeat", config, [...nestedSteps]]`, `["ShortestPath", { targetId?, maxDepth?, weightProperty?, targetCondition? }]`.
+Registry-integrated traversal steps extending base implementations. Exports `VertexStep`, `EdgeStep`, `RepeatStep`, `ShortestPathStep` with static `category = "traversal"`. JSON formats: `["Vertex", { direction: "in"|"out"|"both", edgeLabels?: string[], stepLabels?: string[] }]`, `["Edge", { direction, edgeLabels?: string[], stepLabels?: string[] }]`, `["Repeat", { times?, untilSteps?, emit?, emitStart?, emitInput?, stepLabels? }, [...nestedSteps]]` (validates `Array.isArray`), `["ShortestPath", { targetId?, direction?, edgeLabels?, maxDepth?, weightProperty?, stepLabels?, targetCondition? }]`. `fromAST` returns `null`. `clone` merges partial config via spread. Auto-registers on module load.
 
 ### [**tests**/](./__tests__/)
 
@@ -96,7 +96,7 @@ Each subdirectory exports an `index.ts` aggregating all public symbols. Parent `
 
 ### StepCategory Taxonomy
 
-Union type: `"fetch" | "traversal" | "filter" | "transform" | "aggregate" | "mutation" | "control" | "setop" | "other"`.
+Union type: `"fetch" | "traversal" | "filter" | "transform" | "aggregate" | "mutation" | "control" | "setops" | "other"`.
 
 ### Registry Error Messages
 
@@ -115,15 +115,15 @@ Union type: `"fetch" | "traversal" | "filter" | "transform" | "aggregate" | "mut
 
 **aggregate**: `["Count", {}]`, `["Sum", { property?: string, variable?: string, stepLabels?: string[] }]`, `["Avg", { property?: string, variable?: string, stepLabels?: string[] }]`, `["Min", { property?: string, variable?: string, stepLabels?: string[] }]`, `["Max", { property?: string, variable?: string, stepLabels?: string[] }]`, `["Collect", { variable?: string, stepLabels?: string[] }]`, `["GroupBy", { groupByItems: [...], returnItems: [...], stepLabels?: string[] }]`
 
-**mutation**: `["Create", { patterns: [...], stepLabels?: string[] }]`, `["Set", { assignments: [...], stepLabels?: string[] }]`, `["Delete", { variables: string[], detach?: boolean, stepLabels?: string[] }]`, `["Remove", { items: [...], stepLabels?: string[] }]`, `["Merge", { pattern: {...}, onCreate?: [...], onMatch?: [...], stepLabels?: string[] }]`
+**mutation**: `["Create", { vertices: [...], edges?: [...], stepLabels?: string[] }]`, `["Set", { assignments: [...], stepLabels?: string[] }]`, `["Delete", { variables: string[], detach?: boolean, stepLabels?: string[] }]`, `["Remove", { items: [...], stepLabels?: string[] }]`, `["Merge", { pattern: {...}, onCreate?: [...], onMatch?: [...], stepLabels?: string[] }]`
 
 **control**: `["Range", { start: number, end: number, stepLabels?: string[] }]`, `["Order", { directions: [...], stepLabels?: string[] }]`, `["OptionalMatch", { variables: string[], stepLabels?: string[] }, [...nestedSteps]]`, `["With", { distinct: boolean, items: [...], orderBy?, skip?, limit?, whereCondition?, stepLabels?: string[] }]`, `["Unwind", { expression: {...}, alias: string, stepLabels?: string[] }]`, `["Foreach", { variable: string, listExpression?, stepLabels?: string[] }, [...nestedSteps]]`
 
-**setops**: `["Union", { stepLabels?: string[] }, [...nestedSteps]]`, `["Intersect", { stepLabels?: string[] }, [...nestedSteps]]`, `["QueryUnion"|"QueryUnionAll", { all: boolean, stepLabels?: string[] }, ...branches]`, `["MultiQuery", { stepLabels?: string[] }, [...statements]]`
+**setops**: `["Union", { stepLabels?: string[] }, [...nestedSteps]]` (returns empty steps; nested deserialization TODO), `["Intersect", { stepLabels?: string[] }, [...nestedSteps]]`, `["QueryUnion"|"QueryUnionAll", { all: boolean, stepLabels?: string[] }, ...branches]`, `["MultiQuery", { stepLabels?: string[] }, [...statements]]` (returns empty statements; recursive deserialization TODO)
 
 ### Null Return Conditions for fromJSON
 
-Returns `null` when: input is `null`, input is not an array, array length < 2, `json[0]` does not match `stepName`, or required config fields missing (`patterns`, `variables`, `assignments`, `items`, `condition`, `direction`, etc.).
+Returns `null` when: input is `null`, input is not an array, array length < 2, `json[0]` does not match `stepName`, or required config fields missing (`vertices`, `variables`, `assignments`, `items`, `condition`, `direction`, etc.).
 
 ### Non-Serializable Steps
 
@@ -152,7 +152,7 @@ Returns `null` when: input is `null`, input is not an array, array length < 2, `
 `StepRegistry`, `stepRegistry` (singleton), `isKnownStep(name: string): boolean`, `createStepFromJSON(json: unknown): Step<StepConfig> | null`, `StepConstructor<TConfig>`, `StepDefinition<TConfig>`, `StepCategory`, `ASTConversionContext`
 
 **Base Types (via index.ts)**
-`Step`, `ContainerStep`, `Traverser`, `createTraverser`, `stringifySteps`, `StepConfig`, `StepStringToken`, `StepTokenColorizers`
+`Step`, `ContainerStep`, `Traverser`, `createTraverser`, `stringifySteps`, `StepConfig`, `StepTokenColorizers`
 
 **Condition System (via index.ts)**
 `evaluateCondition`, `resolveConditionValue`, `stringifyCondition`, `stringifyConditionValueRef`, `compare`, `Condition`, `BinaryCondition`, `UnaryCondition`, `LogicalCondition`, `NotCondition`, `InCondition`, `ExpressionCondition`, `LabelWildcardCondition`, `IsLabeledCondition`, operator enums
@@ -161,7 +161,7 @@ Returns `null` when: input is `null`, input is not an array, array length < 2, `
 `FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep` (fetch); `VertexStep`, `EdgeStep`, `RepeatStep`, `ShortestPathStep` (traversal); `FilterElementsStep`, `FilterPredicateStep`, `DedupStep` (filter); `MapElementsStep`, `ValuesStep`, `PropertyValuesStep`, `LabelsStep`, `SelectStep`, `UnfoldStep`, `BindPathStep`, `CallStep`, `ExpressionReturnStep` (transform); `CountStep`, `SumStep`, `AvgStep`, `MinStep`, `MaxStep`, `CollectStep`, `GroupByStep` (aggregate); `CreateStep`, `SetStep`, `DeleteStep`, `RemoveStep`, `MergeStep` (mutation); `RangeStep`, `OrderStep`, `OptionalMatchStep`, `WithStep`, `UnwindStep`, `ForeachStep` (control); `UnionStep`, `IntersectStep`, `QueryUnionStep`, `MultiQueryStep` (setops)
 
 **Config Types (via index.ts)**
-`FetchVerticesStepConfig`, `FetchEdgesStepConfig`, `CartesianFetchStepConfig`, `VertexStepConfig`, `EdgeStepConfig`, `RepeatStepConfig`, `ShortestPathStepConfig`, `FilterElementsStepConfig`, `FilterPredicateStepConfig`, `DedupStepConfig`, `MapElementsStepConfig`, `ValuesStepConfig`, `PropertyValuesStepConfig`, `LabelsStepConfig`, `SelectStepConfig`, `UnfoldStepConfig`, `BindPathStepConfig`, `CallStepConfig`, `ExpressionReturnStepConfig`, `ExpressionReturnItem`, `CountStepConfig`, `AggregateStepConfig`, `CollectStepConfig`, `GroupByStepConfig`, `CreateStepConfig`, `SetStepConfig`, `DeleteStepConfig`, `RemoveStepConfig`, `MergeStepConfig`, `RangeStepConfig`, `OrderStepConfig`, `OrderDirection`, `NullsOrdering`, `OptionalMatchStepConfig`, `WithStepConfig`, `WithItemConfig`, `UnwindStepConfig`, `UnwindExpression`, `ForeachStepConfig`, `ForeachListExpression`, `UnionStepConfig`, `IntersectStepConfig`, `QueryUnionStepConfig`, `MultiQueryStepConfig`
+`FetchVerticesStepConfig`, `FetchEdgesStepConfig`, `CartesianFetchStepConfig`, `VertexStepConfig`, `EdgeStepConfig`, `RepeatStepConfig`, `ShortestPathStepConfig`, `FilterElementsStepConfig`, `FilterPredicateStepConfig`, `DedupStepConfig`, `MapElementsStepConfig`, `ValuesStepConfig`, `PropertyValuesStepConfig`, `LabelsStepConfig`, `SelectStepConfig`, `UnfoldStepConfig`, `BindPathStepConfig`, `CallStepConfig`, `ExpressionReturnStepConfig`, `ExpressionReturnItem`, `CountStepConfig`, `AggregateStepConfig`, `CollectStepConfig`, `GroupByStepConfig`, `CreateStepConfig`, `CreateVertexConfig`, `CreateEdgeConfig`, `SetStepConfig`, `DeleteStepConfig`, `RemoveStepConfig`, `MergeStepConfig`, `RangeStepConfig`, `OrderStepConfig`, `OrderDirection`, `NullsOrdering`, `OptionalMatchStepConfig`, `WithStepConfig`, `WithItemConfig`, `UnwindStepConfig`, `UnwindExpression`, `ForeachStepConfig`, `ForeachListExpression`, `UnionStepConfig`, `IntersectStepConfig`, `QueryUnionStepConfig`, `MultiQueryStepConfig`
 
 ## Reproduction-Critical Constants
 

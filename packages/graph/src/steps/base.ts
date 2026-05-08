@@ -15,6 +15,5 @@ export {
   createTraverser,
   stringifySteps,
   type StepConfig,
-  type StepStringToken,
   type StepTokenColorizers,
 } from "../Steps.js";

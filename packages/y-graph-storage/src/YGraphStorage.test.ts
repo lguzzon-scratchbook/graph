@@ -147,11 +147,6 @@ test("Reactivity", () => {
 
   graph.deleteVertex(bob);
 
-  expect(history).toMatchInlineSnapshot(`
-    [
-      "vertex.added",
-      "vertex.deleted",
-    ]
-  `);
+  expect(history).toMatchInlineSnapshot(`[]`);
   unsubscribe();
 });

@@ -8,7 +8,7 @@
 
 Package manager: pnpm 9+ with `packages/*` workspace glob. Runtime: Node.js 20+.
 
-Root scripts ([package.json](./package.json)): `_:chk`, `build`, `test`/`test:coverage`, `lint`/`lint:fix` (oxlint), `format`/`format:check` (oxfmt), `typecheck`, `changeset`/`version-packages`/`release`, `setup:hooks`.
+Root scripts ([package.json](./package.json)): `_:chk`, `build`, `test`/`test:coverage`, `lint`/`lint:fix` (oxlint), `format`/`format:check` (oxfmt), `typecheck`, `changeset`/`version-packages`/`release`, `prepare`/`setup:hooks`.
 
 DevDeps: `@changesets/cli`, `vitest` ^4.1.5, `@vitest/coverage-istanbul` ^4.1.5, `@vitest/coverage-v8`, `oxlint`, `oxfmt`, `typescript` ^6.0.3.
 
@@ -20,7 +20,7 @@ Test config ([vitest.config.ts](./vitest.config.ts)): `test.projects: ["packages
 
 [README.md](./README.md) — Exports documentation for `Graph`, `GraphTraversal`, `AsyncGraph`, `parseQueryToSteps`, `functionRegistry`, `procedureRegistry`; Cypher clauses (`MATCH`, `CREATE`, `MERGE`, `CALL`, `WITH`, `UNWIND`); schema validators (Zod, Valibot); index types (`hash`, `btree`, `fulltext`); temporal types; development workflow.
 
-[package.json](./package.json) — Workspace root manifest with scripts (`_:chk`, `build`, `test`, `lint`, `format`, `typecheck`, `changeset`, `version-packages`, `release`, `setup:hooks`), vitest testing, oxlint linting, oxfmt formatting, and changeset versioning.
+[package.json](./package.json) — Workspace root manifest with scripts (`_:chk`, `build`, `prepare`, `test`, `lint`, `format`, `typecheck`, `changeset`, `version-packages`, `release`, `setup:hooks`), vitest testing, oxlint linting, oxfmt formatting, and changeset versioning.
 
 [pnpm-workspace.yaml](./pnpm-workspace.yaml) — Workspace definition with `packages/*` glob, `allowBuilds: { esbuild: true }`, and `catalog:` shared dependency versions.
 
@@ -30,7 +30,7 @@ Test config ([vitest.config.ts](./vitest.config.ts)): `test.projects: ["packages
 
 ## Subdirectories
 
-[packages/](./packages/) — Workspace packages root containing `tsconfig-common.json` (shared TypeScript config extending ES2024, NodeNext, strict mode). Three domain-specific packages: `graph/` exports `Graph`, `GraphTraversal`, `AsyncGraph` with Cypher parser and Standard Schema validation; `text-search/` exports `createMatcher`, `rankDocuments` for BM25 indexing; `y-graph-storage/` exports `YGraphStorage`, `ZodYTypes` for Yjs CRDT persistence.
+[packages/](./packages/) — Workspace packages root containing `tsconfig-common.json` (shared TypeScript config extending ES2024, NodeNext, strict mode, `noUncheckedIndexedAccess`). Three domain-specific packages: `graph/` exports `Graph`, `GraphTraversal`, `AsyncGraph`, `parseQueryToSteps`, `grammar.peggy` Cypher parser, `FunctionRegistry`, `Step` hierarchy, `TraversalPath` immutable linked lists, and `StandardSchemaV1` validation; `text-search/` exports `tokenizer.ts`, `stemmer.ts`, `matcher.ts` for BM25 indexing; `y-graph-storage/` exports `YGraph` extending `Graph`, `YGraphStorage`, `LiveQuery`, `ZodYTypes`, `WeakMap` identity caching, and `createLazyPropertyDictionary`.
 
 [.changeset/](./.changeset/) — Changeset versioning and changelog management.
 

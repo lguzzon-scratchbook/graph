@@ -23,7 +23,7 @@ export class CreateStep extends BaseCreateStep {
 
   /**
    * Deserialize from JSON format.
-   * Format: ["Create", { patterns: [...] }]
+   * Format: ["Create", { vertices: [...], edges?: [...] }]
    */
   static fromJSON(json: unknown): CreateStep | null {
     if (!Array.isArray(json) || json.length < 2) return null;
@@ -31,10 +31,11 @@ export class CreateStep extends BaseCreateStep {
     if (name !== "Create") return null;
 
     const cfg = config as CreateStepConfig | undefined;
-    if (!cfg?.patterns) return null;
+    if (!cfg?.vertices) return null;
 
     return new CreateStep({
-      patterns: cfg.patterns,
+      vertices: cfg.vertices,
+      edges: cfg.edges,
       stepLabels: cfg.stepLabels,
     });
   }
@@ -52,7 +53,8 @@ export class CreateStep extends BaseCreateStep {
   override clone(partial?: Partial<CreateStepConfig>): CreateStep {
     const { config } = this;
     return new CreateStep({
-      patterns: partial?.patterns ?? config.patterns,
+      vertices: partial?.vertices ?? config.vertices,
+      edges: partial?.edges ?? config.edges,
       stepLabels: partial?.stepLabels ?? (config.stepLabels ? [...config.stepLabels] : undefined),
     });
   }

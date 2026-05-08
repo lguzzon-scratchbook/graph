@@ -6,10 +6,10 @@ Registry-integrated traversal steps for graph query execution. Exports `VertexSt
 
 ## Contents
 
-- [EdgeStep.ts](./EdgeStep.ts) — Extends `BaseEdgeStep`, registers as `stepName="Edge"` with `category="traversal"`, deserializes `["Edge", {direction, edgeLabels}]` JSON tuples via `fromJSON()`.
-- [RepeatStep.ts](./RepeatStep.ts) — Extends `BaseRepeatStep<TSteps>` with generic nested step support, parses `["Repeat", config, nestedSteps]` triples where nested steps are `[name, config]` tuples, implements `clone(partial)` merging config via nullish coalescing.
-- [ShortestPathStep.ts](./ShortestPathStep.ts) — Extends `BaseShortestPathStep`, handles `["ShortestPath", config]` tuples with optional `targetId`, `maxDepth`, `weightProperty`, `targetCondition` fields.
-- [VertexStep.ts](./VertexStep.ts) — Extends `BaseVertexStep`, registers as `stepName="Vertex"`, deserializes `["Vertex", {direction, edgeLabels}]` preserving `edgeLabels` and `stepLabels` array copies in `clone()`.
+- [EdgeStep.ts](./EdgeStep.ts) — Extends `BaseEdgeStep`, registers as `stepName="Edge"` with `category="traversal"`, deserializes `["Edge", {direction: Direction, edgeLabels: string[]}]` JSON tuples via `fromJSON()`.
+- [RepeatStep.ts](./RepeatStep.ts) — Extends `BaseRepeatStep<TSteps>` with generic nested step support, parses `["Repeat", {times?, untilSteps?, emit?, emitStart?, emitInput?, stepLabels?}, nestedSteps]` triples where nested steps are `[name, config]` tuples, validates `Array.isArray`, implements `clone(partial)` merging config via nullish coalescing.
+- [ShortestPathStep.ts](./ShortestPathStep.ts) — Extends `BaseShortestPathStep`, handles `["ShortestPath", {targetId?, direction?, edgeLabels?, maxDepth?, weightProperty?, stepLabels?, targetCondition?}]` tuples with optional fields for target specification, edge filtering, and path constraints.
+- [VertexStep.ts](./VertexStep.ts) — Extends `BaseVertexStep`, registers as `stepName="Vertex"`, deserializes `["Vertex", {direction: Direction, edgeLabels: string[]}]` preserving `edgeLabels` and `stepLabels` array copies in `clone()`.
 - [index.ts](./index.ts) — Barrel export exposing `VertexStep`, `EdgeStep`, `RepeatStep`, `ShortestPathStep` classes (with side-effect registration) and re-exporting `VertexStepConfig`, `EdgeStepConfig`, `RepeatStepConfig`, `ShortestPathStepConfig` from `../../Steps.js`.
 
 ## Subdirectories

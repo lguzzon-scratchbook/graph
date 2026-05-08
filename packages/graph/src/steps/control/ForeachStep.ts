@@ -30,7 +30,7 @@ export class ForeachStep<
    */
   static fromJSON(json: unknown): ForeachStep<readonly Step<any>[]> | null {
     if (!Array.isArray(json) || json.length < 3) return null;
-    const [name, config, nestedSteps] = json;
+    const [name, config] = json;
     if (name !== "Foreach") return null;
 
     const cfg = config as ForeachStepConfig | undefined;
@@ -62,7 +62,8 @@ export class ForeachStep<
   /**
    * Clone with optional partial config override.
    */
-  override clone(partial?: Partial<ForeachStepConfig>): ForeachStep<readonly Step<any>[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  override clone(partial?: Partial<ForeachStepConfig>): ForeachStep<any> {
     const { config, steps } = this;
     return new ForeachStep(
       {

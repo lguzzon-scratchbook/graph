@@ -34,7 +34,7 @@ export class IntersectStep<
    */
   static fromJSON(json: unknown): IntersectStep<readonly Step<any>[]> | null {
     if (!Array.isArray(json) || json.length < 3) return null;
-    const [name, config, nestedSteps] = json;
+    const [name, config] = json;
     if (name !== "Intersect") return null;
 
     // Note: Nested steps would need to be deserialized recursively
@@ -60,7 +60,8 @@ export class IntersectStep<
   /**
    * Clone with optional partial config override.
    */
-  override clone(partial?: Partial<IntersectStepConfig>): IntersectStep<readonly Step<any>[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  override clone(partial?: Partial<IntersectStepConfig>): IntersectStep<any> {
     const { config, steps } = this;
     return new IntersectStep(
       {

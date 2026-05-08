@@ -22,6 +22,8 @@ export { MergeStep } from "./MergeStep.js";
 // Re-export config types from source of truth
 export type {
   CreateStepConfig,
+  CreateVertexConfig,
+  CreateEdgeConfig,
   SetStepConfig,
   DeleteStepConfig,
   RemoveStepConfig,

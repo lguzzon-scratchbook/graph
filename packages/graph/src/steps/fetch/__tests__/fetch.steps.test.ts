@@ -3,7 +3,7 @@ import { FetchVerticesStep, FetchEdgesStep, CartesianFetchStep } from "../index.
 import { stepRegistry } from "../../StepRegistry.js";
 import type { QueryContext } from "../../../QueryContext.js";
 
-const mockContext = { params: {} } as QueryContext;
+const _mockContext = { params: {} } as QueryContext;
 
 describe("FetchVerticesStep (modular)", () => {
   it("should be registered with stepRegistry", () => {

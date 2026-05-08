@@ -6,14 +6,15 @@ Registry-enabled fetch step wrappers extending base implementations to support d
 
 ## Contents
 
-- [CartesianFetchStep.ts](./CartesianFetchStep.ts) - CartesianFetchStep extends BaseCartesianFetchStep, static stepName "CartesianFetch", fromJSON validates `["CartesianFetch", config]` tuples, clone copies vertexLabels/stepLabels via spread.
-- [FetchEdgesStep.ts](./FetchEdgesStep.ts) - FetchEdgesStep extends BaseFetchEdgesStep, static stepName "FetchEdges", fromJSON parses `["FetchEdges", { edgeLabels?: string[], ids?: string[] }]`, clone copies edgeLabels/ids arrays.
-- [FetchVerticesStep.ts](./FetchVerticesStep.ts) - FetchVerticesStep extends BaseFetchVerticesStep, static stepName "FetchVertices", fromJSON parses `["FetchVertices", { vertexLabels?: string[], ids?: string[] }]`, clone copies vertexLabels/ids/stepLabels arrays.
-- [index.ts](./index.ts) - Re-exports FetchVerticesStep, FetchEdgesStep, CartesianFetchStep and config types FetchVerticesStepConfig, FetchEdgesStepConfig, CartesianFetchStepConfig.
+- [CartesianFetchStep.ts](./CartesianFetchStep.ts) - `CartesianFetchStep` extends `BaseCartesianFetchStep`, static `stepName = "CartesianFetch"`, `fromJSON` validates `["CartesianFetch", config]` tuples, `clone` copies `vertexLabels`/`stepLabels` via spread.
+- [FetchEdgesStep.ts](./FetchEdgesStep.ts) - `FetchEdgesStep` extends `BaseFetchEdgesStep`, static `stepName = "FetchEdges"`, `fromJSON` parses `["FetchEdges", { edgeLabels?: string[], ids?: string[] }]`, `clone` copies `edgeLabels`/`ids` arrays.
+- [FetchVerticesStep.ts](./FetchVerticesStep.ts) - `FetchVerticesStep` extends `BaseFetchVerticesStep`, static `stepName = "FetchVertices"`, `fromJSON` parses `["FetchVertices", { vertexLabels?: string[], ids?: string[] }]`, `clone` copies `vertexLabels`/`ids`/`stepLabels` arrays.
+- [index.ts](./index.ts) - Re-exports `FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep` and config types `FetchVerticesStepConfig`, `FetchEdgesStepConfig`, `CartesianFetchStepConfig`.
+- [**tests**/](__tests__/) - Fetch step test implementations. Validates `FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep` via `stepRegistry` integration, static property verification, constructor config interfaces, JSON round-trips, partial config cloning.
 
 ## Subdirectories
 
-- [**tests**/](__tests__/) - fetch.steps.test.ts validates stepRegistry integration, JSON serialization round-trips, partial config cloning, and `fromJSON` null-return edge cases for all fetch steps.
+- [\***\*tests**/\*\*](__tests__/) - Fetch step test implementations. Validates `FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep` via `stepRegistry` integration, static property verification, constructor config interfaces, JSON round-trips, partial config cloning.
 
 ## Behavioral Contracts
 
@@ -39,14 +40,19 @@ Condition type format: `["=", string, string]` (operator, field, value).
 
 Factory method contracts:
 
-- `fromJSON(json: unknown)` returns `null` when first tuple element does not match static `stepName` or config object missing.
+- `fromJSON(json: unknown)` returns `null` for: `null`, empty arrays `[]`, wrong step names (e.g., `"WrongName"`), missing config tuple element, or when first tuple element does not match static `stepName`.
 - `fromAST(_astNode: AST, _context: ASTConversionContext)` returns `null` in all fetch steps (AST conversion delegated to astToSteps.ts).
+- `stepRegistry.create("UnknownStep", {})` throws.
 
-Clone behavior: `clone(partial?: Partial<Config>)` merges partial config, copies arrays via spread operator (`...this.vertexLabels`, `...this.ids`, `...this.stepLabels`, `...this.edgeLabels`).
+Clone behavior: `clone(partial?: Partial<Config>)` merges partial config preserving unmodified `stepLabels` and `condition` values, copies arrays via spread operator (`...this.vertexLabels`, `...this.ids`, `...this.stepLabels`, `...this.edgeLabels`).
+
+All fetch steps register with `category: "fetch"`.
 
 ## File Relationships
 
-index.ts barrel-reexports all fetch steps and their config types. CartesianFetchStep.ts imports `BaseCartesianFetchStep`, `CartesianFetchStepConfig` from `../../Steps.js`, `stepRegistry` and `ASTConversionContext` from `../StepRegistry.js`, `AST` from `../../AST.js`. FetchEdgesStep.ts imports `FetchEdgesStep`, `FetchEdgesStepConfig` from `../../Steps.js`, `stepRegistry` and `ASTConversionContext` from `../StepRegistry.js`, `AST` from `../../AST.js`. FetchVerticesStep.ts imports `FetchVerticesStep`, `FetchVerticesStepConfig` from `../../Steps.js`, `stepRegistry` and `ASTConversionContext` from `../StepRegistry.js`, `AST` from `../../AST.js`.
+`index.ts` barrel-reexports all fetch steps and their config types. `CartesianFetchStep.ts` imports `BaseCartesianFetchStep`, `CartesianFetchStepConfig` from `../../Steps.js`, `stepRegistry` and `ASTConversionContext` from `../StepRegistry.js`, `AST` from `../../AST.js`. `FetchEdgesStep.ts` imports `FetchEdgesStep`, `FetchEdgesStepConfig` from `../../Steps.js`, `stepRegistry` and `ASTConversionContext` from `../StepRegistry.js`, `AST` from `../../AST.js`. `FetchVerticesStep.ts` imports `FetchVerticesStep`, `FetchVerticesStepConfig` from `../../Steps.js`, `stepRegistry` and `ASTConversionContext` from `../StepRegistry.js`, `AST` from `../../AST.js`.
+
+`__tests__/fetch.steps.test.ts` imports fetch steps (`FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep`) from `../index.js`, `stepRegistry` from `../../StepRegistry.js`, `QueryContext` type from `../../../QueryContext.js`. Tests verify `stepRegistry.has(name)`, `stepRegistry.get(name)`, `stepRegistry.create(name, config)` return correct step instances with proper categories.
 
 ## API Surface
 

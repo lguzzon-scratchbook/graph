@@ -28,7 +28,7 @@ export class MultiQueryStep extends BaseMultiQueryStep {
    */
   static fromJSON(json: unknown): MultiQueryStep | null {
     if (!Array.isArray(json) || json.length < 2) return null;
-    const [name, config, ...statements] = json;
+    const [name, config] = json;
     if (name !== "MultiQuery") return null;
 
     const cfg = config as MultiQueryStepConfig | undefined;

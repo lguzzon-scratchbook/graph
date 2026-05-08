@@ -28,7 +28,7 @@ export class UnionStep<const TSteps extends readonly Step<any>[]> extends BaseUn
    */
   static fromJSON(json: unknown): UnionStep<readonly Step<any>[]> | null {
     if (!Array.isArray(json) || json.length < 3) return null;
-    const [name, config, nestedSteps] = json;
+    const [name, config] = json;
     if (name !== "Union") return null;
 
     // Note: Nested steps would need to be deserialized recursively
@@ -54,7 +54,8 @@ export class UnionStep<const TSteps extends readonly Step<any>[]> extends BaseUn
   /**
    * Clone with optional partial config override.
    */
-  override clone(partial?: Partial<UnionStepConfig>): UnionStep<readonly Step<any>[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  override clone(partial?: Partial<UnionStepConfig>): UnionStep<any> {
     const { config, steps } = this;
     return new UnionStep(
       {

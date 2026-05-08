@@ -8,20 +8,20 @@ Tests mutation step classes (CreateStep, SetStep, DeleteStep, RemoveStep, MergeS
 
 ### Test Files
 
-| File                                               | Description                                                                                                                                                                    |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [mutation.steps.test.ts](./mutation.steps.test.ts) | Validates CreateStep, SetStep, DeleteStep, RemoveStep, MergeStep constructors. Tests stepRegistry factory methods, clone() semantics, and JSON [stepName, config] round-trips. |
+| File                                               | Description                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [mutation.steps.test.ts](./mutation.steps.test.ts) | Validates five step implementations: CreateStep (`vertices: CreateVertexConfig[]`), SetStep (`assignments: SetAssignment[]`), DeleteStep (`variables: string[]`, `detach?: boolean`), RemoveStep (`items: RemoveItem[]`), MergeStep (`pattern`, `onCreate?`, `onMatch?`). Tests registry factory methods, clone() partial updates, JSON round-trips, and null-return validation for malformed deserialization. |
 
 ## Behavioral Contracts
 
 **JSON Serialization**
 
 - Format: `[stepName, config]` tuple
-- `fromJSON()` returns `null` on: wrong step name, `null` input, missing required config fields (`patterns` for Create, `assignments` for Set, `variables` for Delete, `items` for Remove, `pattern` for Merge)
+- `fromJSON()` returns `null` on: wrong step name, `null` input, missing required config fields (`vertices` for Create, `assignments` for Set, `variables` for Delete, `items` for Remove, `pattern` for Merge)
 
 **Registry Factory Pattern**
 
-- `stepRegistry.create("Create", { patterns })` returns CreateStep instance
+- `stepRegistry.create("Create", { vertices })` returns CreateStep instance
 - `stepRegistry.create("Set", { assignments })` returns SetStep instance
 - `stepRegistry.create("Delete", { variables })` returns DeleteStep instance
 - `stepRegistry.create("Remove", { items })` returns RemoveStep instance

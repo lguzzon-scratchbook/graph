@@ -12,7 +12,7 @@ import {
 } from "../../Steps.js";
 import { TraversalPath } from "../../Traversals.js";
 import type { QueryContext } from "../../QueryContext.js";
-import { Vertex, Edge, $StoredElement, type StoredElement } from "../../Graph.js";
+import { Vertex, $StoredElement, type StoredElement } from "../../Graph.js";
 
 // Mock data setup
 const mockContext: QueryContext = {

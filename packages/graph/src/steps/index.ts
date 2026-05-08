@@ -33,7 +33,6 @@ export {
   createTraverser,
   stringifySteps,
   type StepConfig,
-  type StepStringToken,
   type StepTokenColorizers,
 } from "../Steps.js";
 
@@ -222,3 +221,16 @@ export {
   type ExpressionReturnStepConfig,
   type ExpressionReturnItem,
 } from "./transform/index.js";
+
+// ============================================================================
+// Utility Types and Functions (re-exported from Steps.js)
+// ============================================================================
+
+export { KnownSteps, createStepsFromJSON } from "../Steps.js";
+
+// ============================================================================
+// Core Types (re-exported from QueryContext.js via Steps.js)
+// ============================================================================
+
+export { QueryContext, QueryContextOptions } from "../Steps.js";
+export type { QueryParams } from "../Steps.js";

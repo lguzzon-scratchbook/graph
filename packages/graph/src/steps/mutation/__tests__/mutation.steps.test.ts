@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { CreateStep, SetStep, DeleteStep, RemoveStep, MergeStep } from "../index.js";
 import { stepRegistry } from "../../StepRegistry.js";
-import type { CreatePattern, SetAssignment, RemoveItem } from "../../../Steps.js";
+import type { CreateVertexConfig, SetAssignment, RemoveItem } from "../../../Steps.js";
 
 describe("CreateStep (modular)", () => {
   it("should be registered with stepRegistry", () => {
@@ -14,21 +14,21 @@ describe("CreateStep (modular)", () => {
     expect(CreateStep.category).toBe("mutation");
   });
 
-  it("should create instance with patterns", () => {
-    const patterns: CreatePattern[] = [
+  it("should create instance with vertices", () => {
+    const vertices: CreateVertexConfig[] = [
       { variable: "n", label: "Person", properties: { name: "Alice" } },
     ];
-    const step = new CreateStep({ patterns });
+    const step = new CreateStep({ vertices });
     expect(step).toBeInstanceOf(CreateStep);
     expect(step.name).toBe("Create");
-    expect(step.config.patterns).toHaveLength(1);
+    expect(step.config.vertices).toHaveLength(1);
   });
 
   it("should deserialize from JSON", () => {
-    const patterns: CreatePattern[] = [{ variable: "n", label: "Person" }];
-    const step = CreateStep.fromJSON(["Create", { patterns }]);
+    const vertices: CreateVertexConfig[] = [{ variable: "n", label: "Person", properties: {} }];
+    const step = CreateStep.fromJSON(["Create", { vertices }]);
     expect(step).toBeInstanceOf(CreateStep);
-    expect(step?.config.patterns).toHaveLength(1);
+    expect(step?.config.vertices).toHaveLength(1);
   });
 
   it("should return null for invalid JSON", () => {
@@ -38,12 +38,12 @@ describe("CreateStep (modular)", () => {
   });
 
   it("should clone with partial config", () => {
-    const patterns: CreatePattern[] = [{ variable: "n", label: "Person" }];
-    const step = new CreateStep({ patterns, stepLabels: ["c"] });
-    const newPatterns: CreatePattern[] = [{ variable: "m", label: "Company" }];
-    const cloned = step.clone({ patterns: newPatterns });
+    const vertices: CreateVertexConfig[] = [{ variable: "n", label: "Person", properties: {} }];
+    const step = new CreateStep({ vertices, stepLabels: ["c"] });
+    const newVertices: CreateVertexConfig[] = [{ variable: "m", label: "Company", properties: {} }];
+    const cloned = step.clone({ vertices: newVertices });
     expect(cloned).toBeInstanceOf(CreateStep);
-    expect(cloned.config.patterns).toEqual(newPatterns);
+    expect(cloned.config.vertices).toEqual(newVertices);
     expect(cloned.config.stepLabels).toEqual(["c"]);
   });
 });
@@ -178,7 +178,7 @@ describe("MergeStep (modular)", () => {
 
 describe("Mutation steps registry integration", () => {
   it("should create all mutation steps via registry", () => {
-    const create = stepRegistry.create("Create", { patterns: [] });
+    const create = stepRegistry.create("Create", { vertices: [] });
     expect(create).toBeInstanceOf(CreateStep);
 
     const set = stepRegistry.create("Set", { assignments: [] });

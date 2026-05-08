@@ -20,7 +20,7 @@ Test suite validating core graph traversal step infrastructure. Tests `StepRegis
 
 **Graph Element Factories** — `createStoredElement`, `createMockVertex`, `createVertexPath` construct `StoredElement` and `Vertex` instances with `[$StoredElement]` symbol, `hasLabel`, `hasProperty`, `get` methods for condition testing.
 
-**Testing Framework** — Vitest (`describe`, `it`, `expect`, `beforeEach`, `vi`). Mock `GraphSource` and `QueryContext` with `params` object for parameter resolution tests.
+**Testing Framework** — Vitest (`describe`, `it`, `expect`, `beforeEach`). Mock `GraphSource` and `QueryContext` with `params` object for parameter resolution tests.
 
 ## Behavioral Contracts
 
@@ -67,6 +67,6 @@ Test suite validating core graph traversal step infrastructure. Tests `StepRegis
 **Type Dependencies**
 
 - `GraphSource` from [`../../Graph.js`](../../Graph.js)
-- `Vertex`, `Edge`, `$StoredElement`, `StoredElement` from [`../../Graph.js`](../../Graph.js)
+- `Vertex`, `$StoredElement`, `StoredElement` from [`../../Graph.js`](../../Graph.js)
 - `QueryContext` from [`../../QueryContext.js`](../../QueryContext.js)
 - `TraversalPath` from [`../../Traversals.js`](../../Traversals.js)

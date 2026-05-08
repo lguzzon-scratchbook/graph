@@ -10,8 +10,8 @@ Monorepo workspace packages root containing shared TypeScript configuration and 
 
 ## Subdirectories
 
-[graph/](./graph/) — TypeScript-first in-memory property graph database implementing Cypher-compatible query language with PEG parser, type-safe Standard Schema validation, and step-based execution pipeline. Exports `@codemix/graph` with runtime, parser, schema validation, and Gremlin-style fluent traversal APIs.
+[graph/](./graph/) — TypeScript-first in-memory property graph database implementing Cypher-compatible query language with `grammar.peggy` PEG parser, `FunctionRegistry` with 70+ builtins, `Step` hierarchy execution pipeline, and `StandardSchemaV1` validation. Exports `@codemix/graph` with `Graph<Schema>` runtime, `parseQueryToSteps`, `TraversalPath` immutable linked lists, and `AsyncGraph` transport.
 
 [text-search/](./text-search/) — BM25 full-text search engine with tokenization, stemming, and matching utilities. Exports `tokenizer.ts` (lexical analysis), `stemmer.ts` (Porter stemming), `matcher.ts` (BM25 scoring). Dependency of `graph` package for `FullTextIndex` implementation.
 
-[y-graph-storage/](./y-graph-storage/) — Yjs-based collaborative storage adapter providing conflict-free replicated data type (CRDT) persistence for graphs. Exports `YGraphStorage.ts` (storage adapter), `YGraph.ts` (Yjs document wrapper), `LazyPropertyDictionary.ts` (sparse property encoding), `ZodYTypes.ts` (schema validation bindings).
+[y-graph-storage/](./y-graph-storage/) — Yjs-based CRDT storage adapter exporting `YGraph` extending `Graph`, `YGraphStorage` implementing `GraphStorage`, `LiveQuery` for reactive traversal re-execution via `zen-observable-ts`, and `ZodYTypes` schemas. Bridges `@codemix/graph` abstractions to `Y.Doc` types with `WeakMap` identity caching and `createLazyPropertyDictionary` property proxies.

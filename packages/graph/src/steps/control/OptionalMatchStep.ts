@@ -36,7 +36,7 @@ export class OptionalMatchStep<
    */
   static fromJSON(json: unknown): OptionalMatchStep<readonly Step<any>[]> | null {
     if (!Array.isArray(json) || json.length < 3) return null;
-    const [name, config, nestedSteps] = json;
+    const [name, config] = json;
     if (name !== "OptionalMatch") return null;
 
     const cfg = config as OptionalMatchStepConfig | undefined;
@@ -67,9 +67,8 @@ export class OptionalMatchStep<
   /**
    * Clone with optional partial config override.
    */
-  override clone(
-    partial?: Partial<OptionalMatchStepConfig>,
-  ): OptionalMatchStep<readonly Step<any>[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  override clone(partial?: Partial<OptionalMatchStepConfig>): OptionalMatchStep<any> {
     const { config, steps } = this;
     return new OptionalMatchStep(
       {

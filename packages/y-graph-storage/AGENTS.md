@@ -8,8 +8,8 @@ Package exports YGraph extending Graph, YGraphStorage implementing GraphStorage,
 
 ### Core Source
 
-- [src/YGraphStorage.ts](./src/YGraphStorage.ts) - GraphStorage implementation over Yjs. Exports YGraphStorage class with WeakMap caches #vertexIdentities/#edgeIdentities and transactional methods addVertex/deleteVertex using makeInternalKey.
-- [src/YGraph.ts](./src/YGraph.ts) - YGraph class extending Graph. Exports subscribe() returning Observable<YGraphChange>, query() returning LiveQuery, using zen-observable-ts and createGraphObserver().
+- [src/YGraphStorage.ts](./src/YGraphStorage.ts) - Exports YGraphStorage implementing GraphStorage via YGraphStorageConfig, with WeakMap caches #vertexIdentities/#edgeIdentities and transactional methods addVertex/deleteVertex using makeInternalKey.
+- [src/YGraph.ts](./src/YGraph.ts) - Exports YGraph<TSchema> extending Graph<TSchema> from YGraphConfig<TSchema> exposing doc: Y.Doc and storage: YGraphStorage; subscribe() returns Observable<YGraphChange>, query() returns LiveQuery using zen-observable-ts and createGraphObserver().
 - [src/LazyPropertyDictionary.ts](./src/LazyPropertyDictionary.ts) - Exports createLazyPropertyDictionary() factory using $YMap symbol and descriptorCache WeakMap for Y.Map-backed property proxies.
 - [src/index.ts](./src/index.ts) - Barrel export of YGraph, YGraphStorage, ZodYTypes.
 

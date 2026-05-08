@@ -60,7 +60,7 @@ export class RepeatStep<TSteps extends readonly Step<any>[]> extends BaseRepeatS
         emitInput: cfg.emitInput,
         stepLabels: cfg.stepLabels,
       },
-      steps as unknown as TSteps,
+      steps as unknown as any,
     );
   }
 
@@ -77,7 +77,8 @@ export class RepeatStep<TSteps extends readonly Step<any>[]> extends BaseRepeatS
   /**
    * Clone with optional partial config override.
    */
-  override clone(partial?: Partial<RepeatStepConfig>): RepeatStep<TSteps> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  override clone(partial?: Partial<RepeatStepConfig>): RepeatStep<any> {
     const { config, steps } = this;
     return new RepeatStep(
       {

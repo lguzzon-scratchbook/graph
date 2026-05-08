@@ -1139,3 +1139,9 @@ export type Expression =
 
 // Literals
 export type Literal = string | number | boolean | null;
+
+/**
+ * Union type of all AST root node types.
+ * Used for generic AST handling in step registry and conversion utilities.
+ */
+export type AST = Query | UnionQuery | MultiStatement;

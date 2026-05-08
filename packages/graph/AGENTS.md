@@ -21,8 +21,8 @@ TypeScript-first in-memory property graph database implementing Cypher-compatibl
 [package.json](./package.json) — ESM manifest with peggy grammar build script. References `scripts.build:grammar` annex for peggy command with return-types.
 [tsconfig.json](./tsconfig.json) — Extends `../tsconfig-common.json`, `outDir: "./dist"`, `rootDir: "src"`, references `../text-search`.
 [vitest.config.ts](./vitest.config.ts) — Test timeout 20s, istanbul coverage, excludes `src/grammar.js` and `**/*.test.ts`. **Annex:** [package.annex.sum](./package.annex.sum).
-[CHANGELOG.md](./CHANGELOG.md) — API evolution: 0.3.0 adds `TraversalPath.nodes()`, `relationships()`, `length()`, `sum()` and `ORDER BY` alias references; 0.2.0 adds `dedup()`, `skip()`, `limit()`, `range()`, `count()`, `property()`, `properties()` to traversals; 0.1.0 adds path analysis methods; 0.0.2 initial metadata.
-[README.md](./README.md) — Usage docs for Cypher interface and Gremlin API.
+[CHANGELOG.md](./CHANGELOG.md) — API evolution: 0.3.0 adds `TraversalPath.nodes()`, `relationships()`, `length()`, `sum()`; `ORDER BY` alias references before `RETURN`/`WITH`. 0.2.0 adds `ValueTraversal` `dedup()`, `skip()`, `limit()`, `range()`, `count()`, `property()`, `properties()`; `EdgeTraversal` `skip()`, `limit()`, `range()`, `count()`, `map()`, `property()`, `properties()`, `order()`. 0.1.0 adds `TraversalPath` path methods; `ValueTraversal.map()`, `filter()`. 0.0.2 Initial npm metadata.
+[README.md](./README.md) — TypeScript-first in-memory property graph database with Cypher-compatible queries and type-safe TinkerPop/Gremlin traversal API. Documents `Graph<Schema>` core types, Cypher interface with 50+ functions and procedures, indexing strategies, `AsyncGraph` transport, and error hierarchy.
 
 ### Core Runtime
 

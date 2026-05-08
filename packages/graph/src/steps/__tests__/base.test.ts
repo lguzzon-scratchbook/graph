@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   Step,
   ContainerStep,
@@ -9,7 +9,6 @@ import {
 } from "../../Steps.js";
 import type { GraphSource } from "../../Graph.js";
 import type { QueryContext } from "../../QueryContext.js";
-import { TraversalPath } from "../../Traversals.js";
 
 // Mock GraphSource for testing
 const mockGraphSource = {} as GraphSource<any>;
@@ -173,7 +172,7 @@ describe("Step", () => {
 
     it("should include stats when traversed", () => {
       const step = new TestStep({ value: "test" });
-      [...step.traverse(mockGraphSource, [1, 2, 3], mockQueryContext)];
+      const _results = [...step.traverse(mockGraphSource, [1, 2, 3], mockQueryContext)];
 
       const str = step.toString();
       expect(str).toContain("traversed");
@@ -224,7 +223,7 @@ describe("Traverser", () => {
       const step = new TestStep({ value: "test" });
       const traverser = new Traverser(step);
 
-      [...traverser.traverse(mockGraphSource, [1, 2], mockQueryContext)];
+      const _results = [...traverser.traverse(mockGraphSource, [1, 2], mockQueryContext)];
       expect(step.traversed).toBe(2);
     });
   });

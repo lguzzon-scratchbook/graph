@@ -28,7 +28,7 @@ export class QueryUnionStep extends BaseQueryUnionStep {
    */
   static fromJSON(json: unknown): QueryUnionStep | null {
     if (!Array.isArray(json) || json.length < 2) return null;
-    const [name, config, ...branches] = json;
+    const [name, config] = json;
     if (name !== "QueryUnion" && name !== "QueryUnionAll") return null;
 
     const cfg = config as QueryUnionStepConfig | undefined;
