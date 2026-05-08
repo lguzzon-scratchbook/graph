@@ -181,3 +181,18 @@ export {
   type ForeachStepConfig,
   type ForeachListExpression,
 } from "./control/index.js";
+
+// ============================================================================
+// Set Operation Steps (Wave 2 - category modules)
+// ============================================================================
+
+export {
+  UnionStep,
+  IntersectStep,
+  QueryUnionStep,
+  MultiQueryStep,
+  type UnionStepConfig,
+  type IntersectStepConfig,
+  type QueryUnionStepConfig,
+  type MultiQueryStepConfig,
+} from "./setops/index.js";
