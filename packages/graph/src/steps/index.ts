@@ -122,3 +122,21 @@ export {
   type FilterPredicateStepConfig,
   type DedupStepConfig,
 } from "./filter/index.js";
+
+// ============================================================================
+// Aggregate Steps (Wave 2 - category modules)
+// ============================================================================
+
+export {
+  CountStep,
+  SumStep,
+  AvgStep,
+  MinStep,
+  MaxStep,
+  CollectStep,
+  GroupByStep,
+  type CountStepConfig,
+  type AggregateStepConfig,
+  type CollectStepConfig,
+  type GroupByStepConfig,
+} from "./aggregate/index.js";
