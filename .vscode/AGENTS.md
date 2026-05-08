@@ -6,7 +6,7 @@ Configures `typescript.tsdk` and `files.exclude`.
 
 ## Contents
 
-- [settings.json](./settings.json) - Sets `typescript.tsdk` and `files.exclude`
+- [settings.json](./settings.json) - TS SDK path, hide `*.sum`.
 
 ## Configuration
 

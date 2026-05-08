@@ -2,77 +2,58 @@
 
 # graph
 
-@codemix/graph monorepo root coordinating TypeScript-first in-memory property graph database development. Manages three workspace packages—@codemix/graph (Cypher queries, Gremlin traversals), @codemix/text-search (BM25), @codemix/y-graph-storage (Yjs CRDT)—via pnpm workspaces with shared TypeScript configuration, Vitest testing, and Changesets release management.
+TypeScript-first in-memory property graph database monorepo. Exports `Graph` (main database class with `addVertex`, `addEdge`, `query`), `GraphTraversal` (Gremlin-style fluent API with `V()`, `E()`, `out()`, `in()`, `both()`, `hasLabel()`, `as()`, `select()`, `repeat()`), `AsyncGraph` (network distribution wrapper emitting `operation` events), `parseQueryToSteps` (Cypher compiler accepting `{ readonly: true }` throwing `ReadonlyGraphError`), `InMemoryGraphStorage`, `functionRegistry`, `procedureRegistry` from `@codemix/graph`. `@codemix/text-search` exports `createMatcher` and `rankDocuments` for BM25 scoring. `@codemix/y-graph-storage` exports `YGraphStorage` and `ZodYTypes` for Yjs CRDT persistence.
 
 ## Contents
 
-- [README.md](./README.md) - Documents public API exports: `Graph`, `GraphTraversal`, `AsyncGraph`, `parseQueryToSteps`, `functionRegistry`, `procedureRegistry`, `InMemoryGraphStorage`; Cypher clauses (`MATCH`, `WHERE`, `RETURN`, `CREATE`, `SET`, `DELETE`, `REMOVE`, `MERGE`, `WITH`, `UNWIND`, `UNION`); index types (`hash`, `btree`, `fulltext`); temporal types (`date`, `datetime`, `localtime`, `localdatetime`, `duration`); and TCK compliance features.
-- [package.json](./package.json) - Root manifest declaring `packages/*` workspace glob, npm scripts (`build`, `changeset`, `version-packages`, `release`, `test`, `test:coverage`, `lint`, `lint:fix`, `format`, `format:check`, `typecheck`, `prepare`, `setup:hooks`), and devDependencies (`@changesets/cli`, `vitest`, `@vitest/coverage-istanbul`, `oxlint`, `oxfmt`, `typescript`).
-- [pnpm-workspace.yaml](./pnpm-workspace.yaml) - Workspace configuration defining `packages/*` locations and shared dependency catalog versions (`catalog:` protocol for `@types/node`, `@vitest/coverage-istanbul`, `typescript`, `vite`, `vitest`, `yjs`, `zen-observable-ts`, `zod`).
-- [vitest.config.ts](./vitest.config.ts) - Vitest configuration exporting default with `test.projects` array targeting `["packages/graph", "packages/text-search", "packages/y-graph-storage"]` for monorepo test execution.
-- [oxlint.json](./oxlint.json) - Oxlint linter configuration with `$schema` pointing to `https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json` and empty `rules` object.
-- [.oxfmtrc.json](./.oxfmtrc.json) - Oxformatter configuration file (referenced by `pnpm format` and pre-commit hooks).
+- [README.md](./README.md) — Documents `Graph` constructor accepting `schema: GraphSchema` and `storage`, `GraphTraversal` typed steps, `parseQueryToSteps` compilation, index types (`hash`, `btree`, `fulltext`), `unique: true` constraints throwing `UniqueConstraintViolationError`, Cypher clauses (`MATCH`, `WHERE`, `RETURN`, `CREATE`, `SET`, `DELETE`, `REMOVE`, `MERGE`, `WITH`, `UNWIND`, `UNION`/`UNION ALL`, `CALL`), temporal types (`date`, `datetime`, `localtime`, `localdatetime`, `duration`), and aggregation functions (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, `COLLECT`)
+- [package.json](./package.json) — Defines pnpm workspaces, scripts `build`, `changeset`, `version-packages`, `release`, `test` (Vitest watch), `test:coverage` (Istanbul), `lint` (oxlint ignore `**/grammar.js`), `lint:fix`, `format` (oxfmt), `format:check`, `typecheck`, `prepare`/`setup:hooks`, devDeps `@changesets/cli`, `vitest`, `@vitest/coverage-istanbul`, `oxlint`, `oxfmt`
+- [pnpm-workspace.yaml](./pnpm-workspace.yaml) — Configures `packages/*` workspace glob, `allowBuilds: { esbuild: true }`, and `catalog:` versions: `typescript` ^6.0.3, `vitest` ^4.1.5, `vite` ^8.0.0, `@types/node` ^25.5.0, `yjs` ^13.6.29, `zod` 4.3.6, `zen-observable-ts` ^1.2.5, `@vitest/coverage-istanbul` ^4.1.5. Annex: [pnpm-workspace.annex.sum](./pnpm-workspace.annex.sum)
+- [vitest.config.ts](./vitest.config.ts) — Exports default Vitest config with `test.projects` array targeting `packages/graph`, `packages/text-search`, `packages/y-graph-storage` and `coverage` settings
+- [oxlint.json](./oxlint.json) — Oxlint configuration using `$schema` `https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json` with `rules: {}`
+- [.oxfmtrc.json](./.oxfmtrc.json) — Oxfmt formatter configuration file
 
 ## Subdirectories
 
-- [packages/](./packages/) - Workspace packages directory containing:
-  - [graph/](./packages/graph/) - Core graph database with Peggy grammar parsing ([grammar.peggy](./packages/graph/src/grammar.peggy) → [grammar.js](./packages/graph/src/grammar.js)), AST-to-traversal compilation ([astToSteps.ts](./packages/graph/src/astToSteps.ts)), BTree/FullText/Hash index implementations, and comprehensive TCK compliance test suite covering clauses, expressions, and use cases.
-  - [text-search/](./packages/text-search/) - BM25 text search library exporting `createMatcher` and `rankDocuments` for fuzzy string operations and document ranking.
-  - [y-graph-storage/](./packages/y-graph-storage/) - Yjs CRDT integration providing `YGraphStorage`, `ZodYTypes`, and reactive `LiveQuery` for collaborative graph storage.
-- [.githooks/](./.githooks/) - Git hooks directory containing [pre-commit](./.githooks/pre-commit) script executing `oxfmt --write` on staged TypeScript files.
-- [.github/workflows/](./.github/workflows/) - GitHub Actions CI/CD definitions ([ci.yml](./.github/workflows/ci.yml), [release.yml](./.github/workflows/release.yml)).
-- [.changeset/](./.changeset/) - Changesets versioning configuration ([config.json](./.changeset/config.json)).
-- [.vscode/](./.vscode/) - Editor settings ([settings.json](./.vscode/settings.json)).
-- [scripts/](./scripts/) - Setup utilities ([setup-git-hooks.sh](./scripts/setup-git-hooks.sh)).
+- [packages/](./packages/) — Three workspace packages: `graph/` (core `Graph`, `GraphTraversal`, `AsyncGraph`, indexes `BTreeIndex`, `HashIndex`, `FullTextIndex`, `QueryPlanner`), `text-search/` (BM25 `createMatcher`, `rankDocuments`, `tokenizer`, `stemmer`), `y-graph-storage/` (`YGraphStorage`, `ZodYTypes`, `LazyPropertyDictionary`)
+- [.changeset/](./.changeset/) — Changesets release management with `config.json` and `README.md`
+- [.githooks/](./.githooks/) — Pre-commit hook executing `oxfmt` on staged files
+- [.github/workflows/](./.github/workflows/) — CI pipeline (`ci.yml`) and release automation (`release.yml`)
+- [.vscode/](./.vscode/) — Editor settings in `settings.json`
+- [scripts/](./scripts/) — Git hook setup via `setup-git-hooks.sh`
 
 ## Stack
 
-- **Package Management**: pnpm 9+ with workspaces (`packages/*` glob in [pnpm-workspace.yaml](./pnpm-workspace.yaml)) and `catalog:` protocol for dependency version pinning.
-- **Runtime**: Node.js 20+ (inferred from ES2024 target and engine specifications).
-- **Language**: TypeScript 6.0.2 with strict compiler settings (`strict: true`, `noUncheckedIndexedAccess: true`, `target: ES2024`, `module: NodeNext`, `moduleResolution: NodeNext`) enforced via [packages/tsconfig-common.json](./packages/tsconfig-common.json).
-- **Testing**: Vitest 4.1.3 with `@vitest/coverage-istanbul` coverage provider, configured in [vitest.config.ts](./vitest.config.ts) with project isolation for each package.
-- **Linting/Formatting**: oxlint (ignore pattern `**/grammar.js` in lint script), oxfmt for automatic code formatting.
-- **Parser Generation**: Peggy for [packages/graph/src/grammar.peggy](./packages/graph/src/grammar.peggy) generating [grammar.js](./packages/graph/src/grammar.js).
-- **Versioning**: Changesets via `@changesets/cli` for structured versioning and automated releases.
-
-## Architecture
-
-Three-package architecture composes graph database functionality:
-
-1. **@codemix/graph** ([packages/graph/](./packages/graph/)) - Core database exporting `Graph` class accepting `GraphSchema` and storage interface; `GraphTraversal` fluent API implementing Gremlin-style steps (`V()`, `E()`, `out()`, `in()`, `both()`, `hasLabel()`, `as()`, `select()`, `repeat()`); `AsyncGraph` wrapper emitting serializable `operation` events for network distribution; `parseQueryToSteps` Cypher compiler throwing `ReadonlyGraphError` for mutation attempts on readonly queries; pluggable index system (`HashIndex`, `BTreeIndex`, `FullTextIndex`) with `unique: true` constraint support throwing `UniqueConstraintViolationError`; extensible function and procedure registries (`functionRegistry.register`, `procedureRegistry.register`).
-
-2. **@codemix/text-search** ([packages/text-search/](./packages/text-search/)) - Search algorithm provider implementing BM25 scoring consumed by @codemix/graph FullTextIndex. Exports `createMatcher` for tokenization/stemming and `rankDocuments` for relevance scoring.
-
-3. **@codemix/y-graph-storage** ([packages/y-graph-storage/](./packages/y-graph-storage/)) - Collaborative storage layer implementing storage interface for @codemix/graph via Yjs CRDTs. Exports `YGraphStorage` for document-based persistence, `ZodYTypes` for Standard Schema validation integration, and `LiveQuery` for reactive traversal subscriptions.
-
-Cross-package dependencies use pnpm workspace protocol (`workspace:*`) ensuring local linking during development and proper version resolution at publish time.
-
-## Configuration
-
-- **Workspace Definition**: [pnpm-workspace.yaml](./pnpm-workspace.yaml) declares `packages` key with `packages/*` glob pattern and catalogs shared dependency versions for consistent resolution across @codemix/graph, @codemix/text-search, and @codemix/y-graph-storage.
-- **Shared TypeScript**: [packages/tsconfig-common.json](./packages/tsconfig-common.json) provides base compiler configuration extended by each package's `tsconfig.json` via `"extends": "packages/tsconfig-common.json"`.
-- **Git Hooks**: [package.json](./package.json) `prepare` script executes [scripts/setup-git-hooks.sh](./scripts/setup-git-hooks.sh) copying hooks from [.githooks/](./.githooks/) to `.git/hooks/`.
-- **Pre-commit Automation**: [.githooks/pre-commit](./.githooks/pre-commit) runs `pnpm exec oxfmt --write` on staged `*.ts` files and re-stages modifications automatically.
+- **Package Manager**: pnpm 9+ with `packages/*` workspace glob
+- **Runtime**: Node.js 20+
+- **Test Framework**: Vitest ^4.1.5 with Istanbul coverage (`@vitest/coverage-istanbul`)
+- **Linting**: oxlint ignoring `**/grammar.js` (PEG.js generated parser in `packages/graph/src/`)
+- **Formatting**: oxfmt with pre-commit auto-restaging via `.githooks/pre-commit`
+- **Release**: `@changesets/cli` for `changeset`, `version-packages`, `release` scripts
+- **Language**: TypeScript ^6.0.3 with `catalog:` version pinning
+- **Key Dependencies**: `yjs` ^13.6.29 (CRDT operations), `zod` 4.3.6 (Standard Schema validation), `zen-observable-ts` ^1.2.5 (observable streams)
 
 ## Workflow & Conventions
 
-- **Installation**: `pnpm install` triggers `prepare` script automatically configuring Git hooks; manual hook reconfiguration via `pnpm run setup:hooks`.
-- **Development Commands**:
-  - `pnpm test` - Vitest watch mode across all packages.
-  - `pnpm test:coverage` - Istanbul coverage report generation.
-  - `pnpm build` - TypeScript compilation for all workspace packages.
-  - `pnpm typecheck` - TypeScript compiler type validation without emit.
-  - `pnpm lint` - oxlint execution with `**/grammar.js` ignore pattern.
-  - `pnpm lint:fix` - oxlint with auto-fix enabled.
-  - `pnpm format` - oxfmt formatting execution.
-  - `pnpm format:check` - oxfmt dry-run for CI validation.
-- **Release Management**:
-  - `pnpm changeset` - Interactive changeset creation for version bumping.
-  - `pnpm version-packages` - Applies changesets and bumps package versions.
-  - `pnpm release` - Publishes updated packages to registry.
-- **Package Isolation**: `pnpm --filter @codemix/graph <command>` (or `--filter @codemix/text-search`, `--filter @codemix/y-graph-storage`) targets individual packages for scoped operations.
-- **Pre-commit Enforcement**: All commits trigger `oxfmt` formatting on staged files; unformatted code blocks commit.
+- **Git Hooks**: `pnpm install` triggers `prepare` script calling `setup:hooks` to install `.githooks/pre-commit`. Manual re-run: `pnpm run setup:hooks`
+- **Pre-commit**: `oxfmt` formats staged TypeScript files and automatically `git add` restages modifications
+- **Commands**:
+  - `pnpm test` — Vitest watch mode across all `test.projects`
+  - `pnpm test:coverage` — Istanbul coverage report
+  - `pnpm --filter @codemix/graph <cmd>` — Target specific package (e.g., `build`, `test`)
+  - `pnpm lint` — oxlint with ignore pattern `**/grammar.js`
+  - `pnpm typecheck` — `tsc --noEmit`
+- **Catalog Protocol**: Dependency versions centralized in `pnpm-workspace.yaml` using `catalog:` specifier in package manifests
+- **Pre-commit Auto-fix**: `oxfmt` runs on staged files via `.githooks/pre-commit`; restages automatically
+
+## API Surface
+
+Monorepo exports three public packages:
+
+- `@codemix/graph`: `Graph`, `GraphTraversal`, `AsyncGraph`, `InMemoryGraphStorage`, `parseQueryToSteps`, `functionRegistry`, `procedureRegistry`, `GraphSchema`, `BTreeIndex`, `HashIndex`, `FullTextIndex`
+- `@codemix/text-search`: `createMatcher`, `rankDocuments`
+- `@codemix/y-graph-storage`: `YGraphStorage`, `ZodYTypes`
 
 ## Reproduction-Critical Constants
 
-- Workspace dependency catalog definitions: [pnpm-workspace.annex.sum](./pnpm-workspace.annex.sum)
+- Workspace catalog versions defined in [pnpm-workspace.annex.sum](./pnpm-workspace.annex.sum): `typescript` ^6.0.3, `vitest` ^4.1.5, `vite` ^8.0.0, `@types/node` ^25.5.0, `yjs` ^13.6.29, `zod` 4.3.6, `zen-observable-ts` ^1.2.5, `@vitest/coverage-istanbul` ^4.1.5

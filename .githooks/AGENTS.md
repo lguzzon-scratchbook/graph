@@ -6,12 +6,12 @@ Git hooks directory providing automated code formatting enforcement. Contains pr
 
 ## Contents
 
-- [pre-commit](./pre-commit) — Runs `pnpm exec oxfmt --write` on staged files matching configured extensions, then re-stages formatted files via `git add`
+- [pre-commit](./pre-commit) — Locates `pnpm` via PATH or fallback dirs, runs `oxfmt --write --` on staged web files, then executes `git add --` to re-stage
 
 ## File Relationships
 
-- Hook activation requires Git configuration pointing to this directory, typically set via [scripts/setup-git-hooks.sh](../scripts/setup-git-hooks.sh)
-- Depends on `oxfmt` binary available through pnpm workspace (configured in [package.json](../package.json))
+- Hook activation requires Git configuration pointing to this directory, typically set via `scripts/setup-git-hooks.sh`
+- Depends on `oxfmt` binary available through pnpm workspace (configured in `package.json`)
 
 ## Behavioral Contracts
 
@@ -19,14 +19,14 @@ Git hooks directory providing automated code formatting enforcement. Contains pr
 
 **Command sequence:**
 
-1. `pnpm exec oxfmt --write` (modifies files in-place)
-2. `git add` (stages formatting changes)
+1. `pnpm exec oxfmt --write --` (modifies files in-place)
+2. `git add --` (stages formatting changes)
 
-**Configuration source:** Uses `.oxfmtrc.json` from repository root for formatting rules
+**Configuration source:** Extensions hardcoded in pre-commit script; `pnpm` resolution uses PATH or fallback directories
 
 ## Workflow & Conventions
 
 - Hook silently reformats files; developers must stage intended changes separately from formatting artifacts
-- Formatter runs on all matching files in the commit, not just changed lines
+- Formatter runs on all matching staged files in the commit
 - Repository requires pnpm; hook fails if `pnpm exec` cannot resolve `oxfmt`
 - No bypass mechanism provided; commit fails if oxfmt exits with error code
