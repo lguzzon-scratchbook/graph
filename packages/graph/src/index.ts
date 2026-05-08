@@ -1,5 +1,5 @@
 import type { Query, UnionQuery, MultiStatement } from "./AST.js";
-import { astToSteps, anyAstToSteps } from "./astToSteps.js";
+import { anyAstToSteps } from "./astToSteps.js";
 import { parse } from "./grammar.js";
 import { Step, ContainerStep } from "./Steps.js";
 import { ReadonlyGraphError } from "./Exceptions.js";

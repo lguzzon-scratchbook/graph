@@ -5,7 +5,7 @@ import { Edge, GraphSource, Vertex, $StoredElement } from "./Graph.js";
 import { GraphSchema } from "./GraphSchema.js";
 import { ElementId } from "./GraphStorage.js";
 import { procedureRegistry } from "./ProcedureRegistry.js";
-import { QueryContext, QueryParams, QueryContextOptions } from "./QueryContext.js";
+import { QueryContext } from "./QueryContext.js";
 import { isTemporalValue, DurationValue, addDuration, subtractDuration } from "./TemporalTypes.js";
 import { TraversalPath } from "./Traversals.js";
 import {
@@ -18,73 +18,6 @@ import {
 // Re-export QueryContext types for convenience
 export { QueryContext, QueryContextOptions } from "./QueryContext.js";
 export type { QueryParams } from "./QueryContext.js";
-
-/**
- * Global query context for backward compatibility.
- * @internal
- * @deprecated Use QueryContext passed to Traverser.traverse() instead.
- */
-let currentQueryParams: QueryParams = {};
-
-/**
- * Global graph source for backward compatibility.
- * @internal
- * @deprecated Use QueryContext passed to Traverser.traverse() instead.
- */
-let currentGraphSource: GraphSource<any> | undefined = undefined;
-
-/**
- * Set the parameters for the current query execution.
- * @deprecated Use QueryContext passed to Traverser.traverse() instead.
- * This function uses global mutable state which is not thread-safe.
- */
-export function setQueryParams(params: QueryParams): void {
-  currentQueryParams = params;
-}
-
-/**
- * Get the parameters for the current query execution.
- * @deprecated Use QueryContext.params instead.
- * This function uses global mutable state which is not thread-safe.
- */
-export function getQueryParams(): QueryParams {
-  return currentQueryParams;
-}
-
-/**
- * Clear the current query parameters.
- * @deprecated Use QueryContext instead - context is automatically scoped to the query.
- */
-export function clearQueryParams(): void {
-  currentQueryParams = {};
-}
-
-/**
- * Set the current graph source for pattern comprehension evaluation.
- * @internal
- * @deprecated Use QueryContext.graph instead.
- */
-export function setCurrentGraphSource(source: GraphSource<any>): void {
-  currentGraphSource = source;
-}
-
-/**
- * Get the current graph source for pattern comprehension evaluation.
- * @internal
- * @deprecated Use QueryContext.graph instead.
- */
-export function getCurrentGraphSource(): GraphSource<any> | undefined {
-  return currentGraphSource;
-}
-
-/**
- * Clear the current graph source.
- * @deprecated Use QueryContext instead - context is automatically scoped to the query.
- * @internal
- */
-export function clearCurrentGraphSource(): void {
-  currentGraphSource = undefined;
-}
 
 export class Traverser {
   public previous: Traverser | undefined;
@@ -99,40 +32,17 @@ export class Traverser {
    * Traverse from the current step.
    * @param source The graph source.
    * @param input The input paths to traverse.
-   * @param context Optional query context. If not provided, uses legacy global state.
+   * @param context Query context for parameters and execution limits.
    */
   public *traverse<const TSchema extends GraphSchema>(
     source: GraphSource<TSchema>,
     input: Iterable<unknown>,
-    context?: QueryContext<TSchema>,
+    context: QueryContext<TSchema>,
   ): IterableIterator<unknown> {
-    // Create context if not provided (backward compatibility)
-    const effectiveContext = context ?? new QueryContext(source, getQueryParams());
-
-    // Set the current graph source for nested pattern comprehension evaluation
-    // This maintains backward compatibility with code that uses getCurrentGraphSource()
-    const previousSource = getCurrentGraphSource();
-    const previousParams = getQueryParams();
-    setCurrentGraphSource(source);
-    setQueryParams(effectiveContext.params);
-    try {
-      if (this.next === undefined) {
-        yield* this.#step.traverse(source, input, effectiveContext);
-      } else {
-        yield* this.next.traverse(
-          source,
-          this.#step.traverse(source, input, effectiveContext),
-          effectiveContext,
-        );
-      }
-    } finally {
-      // Restore previous state (in case of nested traversals)
-      if (previousSource) {
-        setCurrentGraphSource(previousSource);
-      } else {
-        clearCurrentGraphSource();
-      }
-      setQueryParams(previousParams);
+    if (this.next === undefined) {
+      yield* this.#step.traverse(source, input, context);
+    } else {
+      yield* this.next.traverse(source, this.#step.traverse(source, input, context), context);
     }
   }
 
@@ -140,12 +50,12 @@ export class Traverser {
    * Does the traverser emit values from the input paths?
    * @param source The graph source.
    * @param input The input paths to match.
-   * @param context Optional query context.
+   * @param context Query context for parameters and execution limits.
    */
   public matches<const TSchema extends GraphSchema>(
     source: GraphSource<TSchema>,
     input: Iterable<unknown>,
-    context?: QueryContext<TSchema>,
+    context: QueryContext<TSchema>,
   ): boolean {
     const it = this.traverse(source, input, context).next();
     return !it.done;
@@ -370,7 +280,7 @@ export abstract class Step<const TConfig extends StepConfig> {
   public abstract traverse(
     source: GraphSource<any>,
     input: Iterable<unknown>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<unknown>;
 
   /**
@@ -427,7 +337,7 @@ export abstract class Step<const TConfig extends StepConfig> {
    */
   protected resolvePropertyValue(
     value: unknown,
-    context?: QueryContext,
+    context: QueryContext,
     path?: TraversalPath<any, any, any>,
   ): unknown {
     if (value === null || typeof value !== "object" || !("type" in value)) {
@@ -437,8 +347,7 @@ export abstract class Step<const TConfig extends StepConfig> {
     const typedValue = value as { type: string; [key: string]: any };
 
     if (typedValue.type === "ParameterRef") {
-      const params = context?.params ?? getQueryParams();
-      return params[typedValue.name as string];
+      return context!.params[typedValue.name as string];
     }
 
     if (typedValue.type === "PropertyAccess" && path) {
@@ -484,7 +393,7 @@ export abstract class Step<const TConfig extends StepConfig> {
    */
   protected resolveProperties(
     properties: Record<string, unknown>,
-    context?: QueryContext,
+    context: QueryContext,
     path?: TraversalPath<any, any, any>,
   ): Record<string, unknown> {
     const resolved: Record<string, unknown> = {};
@@ -559,7 +468,7 @@ export class StartStep extends Step<StartStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     // Check if there's already valid TraversalPath input - if so, pass it through
     let hasValidInput = false;
@@ -608,7 +517,7 @@ export class DrainStep extends Step<DrainStepConfig> {
   public traverse(
     _source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     // Consume all input paths (so mutations execute) but yield nothing
     for (const _path of input) {
@@ -649,7 +558,7 @@ export class FetchEdgesStep extends Step<FetchEdgesStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     _input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { edgeLabels, stepLabels, ids } = this.config;
 
@@ -709,7 +618,7 @@ export class FetchVerticesStep extends Step<FetchVerticesStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     _input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { vertexLabels, ids, stepLabels } = this.config;
     if (ids !== undefined && ids.length > 0) {
@@ -777,7 +686,7 @@ export class CartesianFetchStep extends Step<CartesianFetchStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { vertexLabels, condition, stepLabels } = this.config;
 
@@ -1019,7 +928,7 @@ export type Condition =
 function evaluateCondition(
   path: TraversalPath<any, any, any>,
   condition: Condition,
-  context?: QueryContext,
+  context: QueryContext,
 ): boolean {
   switch (condition[0]) {
     case "and": {
@@ -1215,7 +1124,7 @@ function stringifyConditionValueRef(value: ConditionValue): string {
 function resolveConditionValue(
   path: TraversalPath<any, any, any>,
   value: ConditionValue,
-  context?: QueryContext,
+  context: QueryContext,
 ): any {
   if (value === null || typeof value !== "object") {
     return value;
@@ -1275,9 +1184,7 @@ function resolveConditionValue(
       }
       return undefined;
     } else if (value.type === "parameterRef") {
-      // Resolve parameter reference from query context (falls back to global for backward compat)
-      const params = context?.params ?? getQueryParams();
-      return params[value.name];
+      return context!.params[value.name];
     } else if (value.type === "arithmeticExpression") {
       // Evaluate arithmetic expression recursively
       const leftVal = resolveConditionValue(path, value.left, context);
@@ -1813,9 +1720,8 @@ function resolveConditionValue(
     } else if (value.type === "patternComprehension") {
       // Evaluate pattern comprehension: [pattern WHERE cond | expr]
       // This executes a mini-traversal for each match and collects projected values
-      const graphSource = context?.graph ?? getCurrentGraphSource();
+      const graphSource = context!.graph;
       if (!graphSource) {
-        // No graph source available - return empty list
         return [];
       }
 
@@ -1830,7 +1736,7 @@ function resolveConditionValue(
 
       // Execute the pattern traversal starting from the current path
       // The pattern steps will generate all matching paths
-      for (const matchedPathUntyped of traverser.traverse(graphSource, [path], context)) {
+      for (const matchedPathUntyped of traverser.traverse(graphSource, [path], context!)) {
         // Cast to correct type - traverser yields TraversalPath<any, any, any>
         const matchedPath = matchedPathUntyped as TraversalPath<any, any, any>;
         // Build a combined path that includes both outer scope and pattern bindings
@@ -1950,9 +1856,8 @@ function resolveConditionValue(
     } else if (value.type === "existsSubquery") {
       // Evaluate EXISTS subquery: { pattern [WHERE cond] }
       // Returns true if the pattern matches at least one result
-      const graphSource = context?.graph ?? getCurrentGraphSource();
+      const graphSource = context!.graph;
       if (!graphSource) {
-        // No graph source available - return false
         return false;
       }
 
@@ -1965,7 +1870,7 @@ function resolveConditionValue(
 
       // Execute the pattern traversal starting from the current path
       // Return true as soon as we find one match
-      for (const matchedPathUntyped of traverser.traverse(graphSource, [path], context)) {
+      for (const matchedPathUntyped of traverser.traverse(graphSource, [path], context!)) {
         // Cast to correct type - traverser yields TraversalPath<any, any, any>
         const matchedPath = matchedPathUntyped as TraversalPath<any, any, any>;
 
@@ -2000,7 +1905,7 @@ function evaluateQuantifier(
     condition: Condition;
   },
   list: any[],
-  context?: QueryContext,
+  context: QueryContext,
 ): boolean {
   let satisfyCount = 0;
 
@@ -2076,7 +1981,7 @@ function evaluateReduce(
   },
   initialValue: any,
   list: any[],
-  context?: QueryContext,
+  context: QueryContext,
 ): any {
   let accumulator = initialValue;
 
@@ -2162,7 +2067,7 @@ function compareValues(left: any, operator: BinaryOperator, right: any): boolean
 function evaluateBinaryCondition(
   path: TraversalPath<any, any, any>,
   condition: BinaryCondition,
-  context?: QueryContext,
+  context: QueryContext,
 ): boolean {
   const [operator, key, conditionValue] = condition;
   const element = path.value;
@@ -2304,7 +2209,7 @@ export class FilterElementsStep<const TPath extends TraversalPath<any, any, any>
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { condition, stepLabels } = this.config;
     const indexManager = source.indexManager;
@@ -2350,7 +2255,7 @@ export class FilterElementsStep<const TPath extends TraversalPath<any, any, any>
     source: GraphSource<any>,
     inputArray: TraversalPath<any, any, any>[],
     hints: IndexHint[],
-    context?: QueryContext,
+    context: QueryContext,
   ): TraversalPath<any, any, any>[] | null {
     const { condition, stepLabels } = this.config;
     const indexManager = source.indexManager;
@@ -2564,7 +2469,7 @@ export class RangeStep extends Step<RangeStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { start, end } = this.config;
     let index = 0;
@@ -2605,7 +2510,7 @@ export class CountStep extends Step<CountStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<number> {
     let count = 0;
     for (const _path of input) {
@@ -2643,7 +2548,7 @@ export class SumStep extends Step<AggregateStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<number> {
     const { property } = this.config;
     let sum = 0;
@@ -2679,7 +2584,7 @@ export class AvgStep extends Step<AggregateStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<number | null> {
     const { property } = this.config;
     let sum = 0;
@@ -2717,7 +2622,7 @@ export class MinStep extends Step<AggregateStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<any> {
     const { property } = this.config;
     let min: any = null;
@@ -2760,7 +2665,7 @@ export class MaxStep extends Step<AggregateStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<any> {
     const { property } = this.config;
     let max: any = null;
@@ -2810,7 +2715,7 @@ export class CollectStep extends Step<CollectStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown[]> {
     const maxCollectionSize = _context?.options.maxCollectionSize ?? DEFAULT_MAX_COLLECTION_SIZE;
     const collected: unknown[] = [];
@@ -2853,7 +2758,7 @@ export class MapElementsStep<TInput> extends Step<MapElementsStepConfig<TInput>>
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<TInput>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown> {
     const { mapper } = this.config;
     for (const value of input) {
@@ -2891,7 +2796,7 @@ export class FilterPredicateStep<TInput> extends Step<FilterPredicateStepConfig<
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<TInput>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown> {
     const { predicate } = this.config;
     for (const value of input) {
@@ -2962,7 +2867,7 @@ export class GroupByStep extends Step<GroupByStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<unknown>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<Record<string, unknown>> {
     const { groupByItems, returnItems } = this.config;
     const maxGroups = context?.options.maxCollectionSize ?? DEFAULT_MAX_GROUPS;
@@ -3036,8 +2941,8 @@ export class GroupByStep extends Step<GroupByStepConfig> {
             paths,
             returnItem.aggregate,
             returnItem.variable,
-            returnItem.property,
             context,
+            returnItem.property,
             returnItem.distinct,
             returnItem.percentile,
           );
@@ -3174,8 +3079,8 @@ export class GroupByStep extends Step<GroupByStepConfig> {
       | "PERCENTILEDISC"
       | "PERCENTILECONT",
     variable: string,
+    context: QueryContext,
     property?: string,
-    context?: QueryContext,
     distinct?: boolean,
     percentile?: number,
   ): unknown {
@@ -3432,7 +3337,7 @@ export class VertexStep extends Step<VertexStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { direction, edgeLabels, stepLabels } = this.config;
     for (const path of input) {
@@ -3547,7 +3452,7 @@ export class EdgeStep extends Step<EdgeStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { direction, edgeLabels, stepLabels } = this.config;
     for (const path of input) {
@@ -3676,7 +3581,7 @@ export class RepeatStep<TSteps extends readonly Step<any>[]> extends ContainerSt
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { times, stepLabels, emit, emitStart, emitInput } = this.config;
     const seen = new Set<ElementId>();
@@ -3733,12 +3638,12 @@ export class RepeatStep<TSteps extends readonly Step<any>[]> extends ContainerSt
       const isFinalIteration = times !== undefined && counter >= times;
       const nextQueue: TraversalPath<any, any, any>[] = [];
 
-      for (const path of repeatTraverser.traverse(source, queue)) {
+      for (const path of repeatTraverser.traverse(source, queue, _context!)) {
         this.traversed++;
         if (!(path instanceof TraversalPath)) continue;
 
         if (untilTraverser !== undefined) {
-          if (untilTraverser.matches(source, [path])) {
+          if (untilTraverser.matches(source, [path], _context!)) {
             // Only emit if we're at or past emitStart
             if (counter >= effectiveEmitStart) {
               this.emitted++;
@@ -3862,7 +3767,7 @@ export class DedupStep extends Step<DedupStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown> {
     const seen = new Set<unknown>();
     for (const item of input) {
@@ -3945,13 +3850,13 @@ export class OrderStep extends Step<OrderStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<unknown>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<unknown> {
     const { directions } = this.config;
     const sorted = [...input].sort((a, b) => {
       for (const { key, expression, direction, nulls } of directions) {
-        const aValue = resolveOrderValue(a, key, expression, context);
-        const bValue = resolveOrderValue(b, key, expression, context);
+        const aValue = resolveOrderValue(a, key, context, expression);
+        const bValue = resolveOrderValue(b, key, context, expression);
 
         // Handle null values according to nulls ordering
         const aIsNull = aValue === null || aValue === undefined;
@@ -3995,8 +3900,8 @@ export class OrderStep extends Step<OrderStepConfig> {
 function resolveOrderValue(
   item: unknown,
   key: string | undefined,
+  context: QueryContext,
   expression?: ConditionValue,
-  context?: QueryContext,
 ): unknown {
   if (expression !== undefined) {
     if (item instanceof TraversalPath) {
@@ -4044,14 +3949,14 @@ export class UnionStep<const TSteps extends readonly Step<any>[]> extends Contai
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown> {
     for (const path of input) {
       this.traversed++;
       this.emitted++;
       yield path;
     }
-    for (const path of this.unionTraverser.traverse(source, input)) {
+    for (const path of this.unionTraverser.traverse(source, input, _context!)) {
       this.traversed++;
       this.emitted++;
       yield path;
@@ -4116,7 +4021,7 @@ export class QueryUnionStep extends Step<QueryUnionStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown> {
     // Collect input into array for reuse across branches
     const inputArray = Array.from(input);
@@ -4124,7 +4029,7 @@ export class QueryUnionStep extends Step<QueryUnionStepConfig> {
     if (this.config.all) {
       // UNION ALL: yield all results from all branches
       for (const traverser of this.traversers) {
-        for (const path of traverser.traverse(source, inputArray)) {
+        for (const path of traverser.traverse(source, inputArray, _context!)) {
           this.traversed++;
           this.emitted++;
           yield path;
@@ -4136,7 +4041,7 @@ export class QueryUnionStep extends Step<QueryUnionStepConfig> {
       const seen = new Set<string>();
 
       for (const traverser of this.traversers) {
-        for (const path of traverser.traverse(source, inputArray)) {
+        for (const path of traverser.traverse(source, inputArray, _context!)) {
           this.traversed++;
 
           // Create a key for deduplication
@@ -4271,7 +4176,7 @@ export class MultiQueryStep extends Step<MultiQueryStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     _input: Iterable<unknown>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<unknown> {
     // Execute each statement sequentially
     // Each statement starts fresh with empty input (no statement chaining)
@@ -4279,7 +4184,7 @@ export class MultiQueryStep extends Step<MultiQueryStepConfig> {
 
     for (let i = 0; i < this.traversers.length; i++) {
       const traverser = this.traversers[i]!;
-      for (const result of traverser.traverse(source, emptyInput, context)) {
+      for (const result of traverser.traverse(source, emptyInput, context!)) {
         this.traversed++;
         this.emitted++;
         // Wrap result with statement index for identification
@@ -4346,7 +4251,7 @@ export class IntersectStep<const TSteps extends readonly Step<any>[]> extends Co
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown> {
     const seenV = new Set<ElementId>();
     const seenE = new Set<ElementId>();
@@ -4362,7 +4267,7 @@ export class IntersectStep<const TSteps extends readonly Step<any>[]> extends Co
       }
     }
 
-    for (const path of this.intersectTraverser.traverse(source, input)) {
+    for (const path of this.intersectTraverser.traverse(source, input, _context!)) {
       this.traversed++;
       if (!(path instanceof TraversalPath)) continue;
       const { value } = path;
@@ -4424,7 +4329,7 @@ export class OptionalMatchStep<const TSteps extends readonly Step<any>[]> extend
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { variables } = this.config;
 
@@ -4432,11 +4337,9 @@ export class OptionalMatchStep<const TSteps extends readonly Step<any>[]> extend
       this.traversed++;
 
       // Run the nested match steps against this single input path
-      const matchResults = [...this.matchTraverser.traverse(source, [inputPath])] as TraversalPath<
-        any,
-        any,
-        any
-      >[];
+      const matchResults = [
+        ...this.matchTraverser.traverse(source, [inputPath], _context!),
+      ] as TraversalPath<any, any, any>[];
 
       if (matchResults.length > 0) {
         // Match found - yield all match results
@@ -4483,7 +4386,7 @@ export class SelectStep extends Step<SelectStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<
     readonly (undefined | TraversalPath<any, any, any> | readonly TraversalPath<any, any, any>[])[]
   > {
@@ -4537,7 +4440,7 @@ export class UnfoldStep extends Step<UnfoldStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown> {
     for (const value of input) {
       this.traversed++;
@@ -4571,7 +4474,7 @@ export class ValuesStep extends Step<ValuesStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown> {
     for (const path of input) {
       this.traversed++;
@@ -4629,7 +4532,7 @@ export class PropertyValuesStep extends Step<PropertyValuesStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<unknown> {
     const { items } = this.config;
     for (const row of input) {
@@ -4726,7 +4629,7 @@ export class ExpressionReturnStep extends Step<ExpressionReturnStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<unknown> {
     const { items } = this.config;
 
@@ -4798,7 +4701,7 @@ export class LabelsStep extends Step<LabelsStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<unknown>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<string[] | string | null> {
     for (const item of input) {
       this.traversed++;
@@ -4875,7 +4778,7 @@ export class BindPathStep extends Step<BindPathStepConfig> {
   public *traverse(
     _source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { pathVariable } = this.config;
 
@@ -5056,7 +4959,7 @@ export class ShortestPathStep extends Step<ShortestPathStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const {
       targetId,
@@ -5092,8 +4995,18 @@ export class ShortestPathStep extends Step<ShortestPathStepConfig> {
             edgeLabels,
             maxDepth,
             weightProperty,
+            _context,
           )
-        : this.bfs(source, startVertex, targetId, targetCondition, direction, edgeLabels, maxDepth);
+        : this.bfs(
+            source,
+            startVertex,
+            targetId,
+            targetCondition,
+            direction,
+            edgeLabels,
+            maxDepth,
+            _context,
+          );
 
       if (result) {
         // Build a TraversalPath from the result
@@ -5128,9 +5041,10 @@ export class ShortestPathStep extends Step<ShortestPathStepConfig> {
     direction: Direction,
     edgeLabels: readonly string[],
     maxDepth: number,
+    context: QueryContext,
   ): ShortestPathResult | null {
     // Early termination: check if start is target
-    if (this.isTarget(startVertex, targetId, targetCondition)) {
+    if (this.isTarget(startVertex, targetId, targetCondition, context)) {
       return { vertices: [startVertex], edges: [], length: 0 };
     }
 
@@ -5162,7 +5076,7 @@ export class ShortestPathStep extends Step<ShortestPathStepConfig> {
           previous.set(neighbor.id, { vertex: current, edge });
 
           // Check if this is the target
-          if (this.isTarget(neighbor, targetId, targetCondition)) {
+          if (this.isTarget(neighbor, targetId, targetCondition, context)) {
             return this.reconstructPath(neighbor, previous, depth);
           }
 
@@ -5187,9 +5101,10 @@ export class ShortestPathStep extends Step<ShortestPathStepConfig> {
     edgeLabels: readonly string[],
     maxDepth: number,
     weightProperty: string,
+    context: QueryContext,
   ): ShortestPathResult | null {
     // Early termination: check if start is target
-    if (this.isTarget(startVertex, targetId, targetCondition)) {
+    if (this.isTarget(startVertex, targetId, targetCondition, context)) {
       return { vertices: [startVertex], edges: [], length: 0, weight: 0 };
     }
 
@@ -5225,7 +5140,7 @@ export class ShortestPathStep extends Step<ShortestPathStepConfig> {
       }
 
       // Check if we've reached the target
-      if (this.isTarget(currentVertex, targetId, targetCondition)) {
+      if (this.isTarget(currentVertex, targetId, targetCondition, context)) {
         // Reconstruct path
         return this.reconstructPath(currentVertex, previous, currentDistance);
       }
@@ -5335,6 +5250,7 @@ export class ShortestPathStep extends Step<ShortestPathStepConfig> {
     vertex: Vertex<any, any>,
     targetId: ElementId | undefined,
     targetCondition: Condition | undefined,
+    context: QueryContext,
   ): boolean {
     if (targetId !== undefined) {
       return vertex.id === targetId;
@@ -5343,7 +5259,7 @@ export class ShortestPathStep extends Step<ShortestPathStepConfig> {
     if (targetCondition !== undefined) {
       // Create a temporary path to evaluate the condition
       const tempPath = new TraversalPath(undefined, vertex, []);
-      return evaluateConditionFn(tempPath, targetCondition);
+      return evaluateConditionFn(tempPath, targetCondition, context);
     }
 
     return false;
@@ -5393,7 +5309,7 @@ export class ShortestPathStep extends Step<ShortestPathStepConfig> {
 function evaluateConditionFn(
   path: TraversalPath<any, any, any>,
   condition: Condition,
-  context?: QueryContext,
+  context: QueryContext,
 ): boolean {
   return evaluateCondition(path, condition, context);
 }
@@ -5461,7 +5377,7 @@ export class ForeachStep<const TSteps extends readonly Step<any>[]> extends Cont
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { variable, listExpression } = this.config;
 
@@ -5613,9 +5529,11 @@ export class ForeachStep<const TSteps extends readonly Step<any>[]> extends Cont
 
           if (fetchTraverser) {
             // Phase 1: Execute fetch steps to get vertices/edges from graph
-            for (const fetchedPath of fetchTraverser.traverse(source, [elementPath]) as Iterable<
-              TraversalPath<any, any, any>
-            >) {
+            for (const fetchedPath of fetchTraverser.traverse(
+              source,
+              [elementPath],
+              context!,
+            ) as Iterable<TraversalPath<any, any, any>>) {
               // Phase 2: Inject the iteration variable scope into the fetched path
               // This allows filter conditions to access the FOREACH iteration variable
               const scopedPath = injectScopeIntoPath(fetchedPath, elementPath);
@@ -5624,9 +5542,11 @@ export class ForeachStep<const TSteps extends readonly Step<any>[]> extends Cont
               let filteredPaths: TraversalPath<any, any, any>[] = [scopedPath];
               if (filterTraverser) {
                 filteredPaths = [];
-                for (const filteredPath of filterTraverser.traverse(source, [
-                  scopedPath,
-                ]) as Iterable<TraversalPath<any, any, any>>) {
+                for (const filteredPath of filterTraverser.traverse(
+                  source,
+                  [scopedPath],
+                  context!,
+                ) as Iterable<TraversalPath<any, any, any>>) {
                   filteredPaths.push(filteredPath);
                 }
               }
@@ -5634,7 +5554,11 @@ export class ForeachStep<const TSteps extends readonly Step<any>[]> extends Cont
               // Phase 4: Execute mutation steps (SET) on filtered paths
               if (mutationTraverser) {
                 for (const path of filteredPaths) {
-                  for (const _mutationResult of mutationTraverser.traverse(source, [path])) {
+                  for (const _mutationResult of mutationTraverser.traverse(
+                    source,
+                    [path],
+                    context!,
+                  )) {
                     // Consume for side effects
                   }
                 }
@@ -5643,7 +5567,7 @@ export class ForeachStep<const TSteps extends readonly Step<any>[]> extends Cont
           }
         } else {
           // No MATCH operation - execute inner steps directly (original behavior)
-          for (const _result of this.foreachTraverser.traverse(source, [elementPath])) {
+          for (const _result of this.foreachTraverser.traverse(source, [elementPath], context!)) {
             // Just consume - the inner steps handle mutations
           }
         }
@@ -5813,7 +5737,7 @@ export class SetStep extends Step<SetStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { assignments } = this.config;
 
@@ -5854,8 +5778,8 @@ export class SetStep extends Step<SetStepConfig> {
             properties.type === "parameter"
           ) {
             // Parameter reference
-            const params = context?.params ?? getQueryParams();
             const paramName = (properties as { type: "parameter"; name: string }).name;
+            const params = context!.params;
             resolvedProps = params[paramName] as Record<string, unknown>;
             if (
               resolvedProps === undefined ||
@@ -5948,8 +5872,7 @@ export class SetStep extends Step<SetStepConfig> {
               resolvedValue = resolvedValue.value;
             }
           } else if (value.type === "parameter") {
-            const params = context?.params ?? getQueryParams();
-            resolvedValue = params[value.name];
+            resolvedValue = context!.params[value.name];
           } else if (value.type === "list") {
             resolvedValue = value.values;
           }
@@ -6014,7 +5937,7 @@ export class CreateStep extends Step<CreateStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { vertices, edges, stepLabels } = this.config;
 
@@ -6154,7 +6077,7 @@ export class DeleteStep extends Step<DeleteStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const graph = source as any;
     if (typeof graph.deleteVertex !== "function") {
@@ -6282,7 +6205,7 @@ export class RemoveStep extends Step<RemoveStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { items } = this.config;
 
@@ -6380,7 +6303,7 @@ export class MergeStep extends Step<MergeStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const graph = source as any;
     if (typeof graph.addVertex !== "function") {
@@ -6549,7 +6472,7 @@ export class MergeStep extends Step<MergeStepConfig> {
   protected matchesProperties(
     element: Vertex<any, any> | Edge<any, any>,
     properties: Record<string, any>,
-    context?: QueryContext,
+    context: QueryContext,
   ): boolean {
     for (const [key, value] of Object.entries(properties)) {
       // Resolve parameter references before comparing
@@ -6564,7 +6487,7 @@ export class MergeStep extends Step<MergeStepConfig> {
   protected resolveValue(
     path: TraversalPath<any, any, any>,
     value: SetAssignmentValue,
-    context?: QueryContext,
+    context: QueryContext,
   ): any {
     if (value.type === "literal") {
       return value.value;
@@ -6585,8 +6508,7 @@ export class MergeStep extends Step<MergeStepConfig> {
       }
       return sourcePath.value;
     } else if (value.type === "parameter") {
-      const params = context?.params ?? getQueryParams();
-      return params[value.name];
+      return context!.params[value.name];
     } else if (value.type === "list") {
       return value.values;
     }
@@ -6686,7 +6608,7 @@ export class WithStep extends Step<WithStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { distinct, items, orderBy, skip, limit, whereCondition } = this.config;
 
@@ -6849,7 +6771,7 @@ export class WithStep extends Step<WithStepConfig> {
   protected projectPath(
     path: TraversalPath<any, any, any>,
     items: readonly WithItemConfig[],
-    context?: QueryContext,
+    context: QueryContext,
   ): TraversalPath<any, any, any> | undefined {
     // Start a new path with the first item's value
     let newPath: TraversalPath<any, any, any> | undefined;
@@ -6899,7 +6821,7 @@ export class WithStep extends Step<WithStepConfig> {
   protected computeAggregates(
     paths: readonly TraversalPath<any, any, any>[],
     items: readonly WithItemConfig[],
-    context?: QueryContext,
+    context: QueryContext,
   ): { firstValue: any; bindings: [string, any][] } {
     const bindings: [string, any][] = [];
     let firstValue: any = null;
@@ -7167,7 +7089,7 @@ export class UnwindStep extends Step<UnwindStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    context?: QueryContext,
+    context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { expression, alias } = this.config;
 
@@ -7200,7 +7122,7 @@ export class UnwindStep extends Step<UnwindStepConfig> {
   protected resolveListExpression(
     path: TraversalPath<any, any, any>,
     expression: UnwindExpression,
-    context?: QueryContext,
+    context: QueryContext,
   ): unknown {
     switch (expression.type) {
       case "literal":
@@ -7231,8 +7153,7 @@ export class UnwindStep extends Step<UnwindStepConfig> {
       }
 
       case "parameter": {
-        const params = context?.params ?? getQueryParams();
-        return params[expression.name];
+        return context!.params[expression.name];
       }
 
       case "function": {
@@ -7338,7 +7259,7 @@ export class CallStep extends Step<CallStepConfig> {
   public *traverse(
     source: GraphSource<any>,
     input: Iterable<TraversalPath<any, any, any>>,
-    _context?: QueryContext,
+    _context: QueryContext,
   ): IterableIterator<TraversalPath<any, any, any>> {
     const { procedureName, arguments: args, yieldItems } = this.config;
 
@@ -7346,7 +7267,7 @@ export class CallStep extends Step<CallStepConfig> {
       this.traversed++;
 
       // Resolve arguments
-      const resolvedArgs = args.map((arg) => resolveConditionValue(path, arg));
+      const resolvedArgs = args.map((arg) => resolveConditionValue(path, arg, _context));
 
       // Create procedure context - pass source as graph (it implements GraphSource)
       const context = {
