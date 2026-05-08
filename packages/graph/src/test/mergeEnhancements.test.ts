@@ -1,7 +1,7 @@
-import { expect, test, describe, beforeEach, afterEach } from "vitest";
+import { expect, test, describe } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser, QueryContext } from "../Steps.js";
 import { createDemoGraph } from "../getDemoGraph.js";
 import type { Query, PropertyMap, NodePattern, Pattern } from "../AST.js";
 
@@ -128,29 +128,21 @@ describe("MERGE with parameter properties - Step conversion", () => {
 });
 
 describe("MERGE with parameter properties - Query execution", () => {
-  beforeEach(() => {
-    clearQueryParams();
-  });
-
-  afterEach(() => {
-    clearQueryParams();
-  });
-
   test("MERGE creates node when no match found using parameter", () => {
     const { graph } = createTestGraph();
 
     // Count initial persons (demo graph has 7)
     const initialPersonCount = [...graph.getVertices("Person")].length;
 
-    // Set parameter for a name that doesn't exist
-    setQueryParams({ name: "Zephyr" });
+    // Create context with parameters
+    const context = new QueryContext(graph, { name: "Zephyr" });
 
     const query = "MERGE (u:Person {name: $name}) RETURN u";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     // Result is an array containing the vertex
@@ -168,15 +160,15 @@ describe("MERGE with parameter properties - Query execution", () => {
     // Count initial persons (demo graph has 7)
     const initialPersonCount = [...graph.getVertices("Person")].length;
 
-    // Set parameter for a name that exists
-    setQueryParams({ name: "Alice" });
+    // Create context with parameters
+    const context = new QueryContext(graph, { name: "Alice" });
 
     const query = "MERGE (u:Person {name: $name}) RETURN u";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     const resultVertex = (results[0] as any[])[0];
@@ -190,14 +182,14 @@ describe("MERGE with parameter properties - Query execution", () => {
   test("MERGE with mixed literal and parameter properties", () => {
     const { graph } = createTestGraph();
 
-    setQueryParams({ name: "David" });
+    const context = new QueryContext(graph, { name: "David" });
 
     const query = "MERGE (u:Person {name: $name, age: 35}) RETURN u";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     const resultVertex = (results[0] as any[])[0];
@@ -208,7 +200,7 @@ describe("MERGE with parameter properties - Query execution", () => {
   test("MERGE creates relationship with parameter property", () => {
     const { graph } = createTestGraph();
 
-    setQueryParams({ rating: 5 });
+    const context = new QueryContext(graph, { rating: 5 });
 
     const query = `
       MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'})
@@ -219,7 +211,7 @@ describe("MERGE with parameter properties - Query execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     const resultEdge = (results[0] as any[])[0];
@@ -248,7 +240,7 @@ describe("MERGE with parameter properties - Query execution", () => {
     const initialKnowsEdges = initialEdges.filter((e) => e.label === "knows");
     const initialKnowsCount = initialKnowsEdges.length;
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results).toHaveLength(1);
     const resultEdge = (results[0] as any[])[0];
@@ -265,7 +257,7 @@ describe("MERGE with parameter properties - Query execution", () => {
 
     // The existing 'knows' edges have no properties, so requiring {since: $year}
     // should create a new edge with that property
-    setQueryParams({ year: 2023 });
+    const context = new QueryContext(graph, { year: 2023 });
 
     const query = `
       MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'})
@@ -282,7 +274,7 @@ describe("MERGE with parameter properties - Query execution", () => {
     const initialKnowsEdges = initialEdges.filter((e) => e.label === "knows");
     const initialKnowsCount = initialKnowsEdges.length;
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     const resultEdge = (results[0] as any[])[0];
@@ -297,14 +289,14 @@ describe("MERGE with parameter properties - Query execution", () => {
   test("MERGE with multiple parameters", () => {
     const { graph } = createTestGraph();
 
-    setQueryParams({ name: "Eve", age: 28, city: "NYC" });
+    const context = new QueryContext(graph, { name: "Eve", age: 28, city: "NYC" });
 
     const query = "MERGE (u:Person {name: $name, age: $age, city: $city}) RETURN u";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     const resultVertex = (results[0] as any[])[0];
@@ -316,14 +308,14 @@ describe("MERGE with parameter properties - Query execution", () => {
   test("MERGE with null parameter value", () => {
     const { graph } = createTestGraph();
 
-    setQueryParams({ name: "Frank", status: null });
+    const context = new QueryContext(graph, { name: "Frank", status: null });
 
     const query = "MERGE (u:Person {name: $name, status: $status}) RETURN u";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     const resultVertex = (results[0] as any[])[0];
@@ -334,14 +326,14 @@ describe("MERGE with parameter properties - Query execution", () => {
   test("MERGE with boolean parameter value", () => {
     const { graph } = createTestGraph();
 
-    setQueryParams({ name: "Grace", active: true });
+    const context = new QueryContext(graph, { name: "Grace", active: true });
 
     const query = "MERGE (u:Person {name: $name, active: $active}) RETURN u";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     const resultVertex = (results[0] as any[])[0];
@@ -351,25 +343,17 @@ describe("MERGE with parameter properties - Query execution", () => {
 });
 
 describe("MERGE with ON CREATE/ON MATCH and parameters", () => {
-  beforeEach(() => {
-    clearQueryParams();
-  });
-
-  afterEach(() => {
-    clearQueryParams();
-  });
-
   test("MERGE with ON CREATE SET using parameter", () => {
     const { graph } = createTestGraph();
 
-    setQueryParams({ name: "Henry", createdBy: "system" });
+    const context = new QueryContext(graph, { name: "Henry", createdBy: "system" });
 
     const query = "MERGE (u:Person {name: $name}) ON CREATE SET u.createdBy = $createdBy RETURN u";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     const resultVertex = (results[0] as any[])[0];
@@ -380,14 +364,14 @@ describe("MERGE with ON CREATE/ON MATCH and parameters", () => {
   test("MERGE with ON MATCH SET when matching with parameter", () => {
     const { graph, alice } = createTestGraph();
 
-    setQueryParams({ name: "Alice", updatedAt: "2024-01-01" });
+    const context = new QueryContext(graph, { name: "Alice", updatedAt: "2024-01-01" });
 
     const query = "MERGE (u:Person {name: $name}) ON MATCH SET u.updatedAt = $updatedAt RETURN u";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results).toHaveLength(1);
     const resultVertex = (results[0] as any[])[0];

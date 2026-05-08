@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { describe, it, expect } from "vitest";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { createDemoGraph } from "../getDemoGraph.js";
@@ -135,17 +136,13 @@ describe("Map Projection", () => {
   });
 
   describe("Query Execution", () => {
-    beforeEach(() => {
-      clearQueryParams();
-    });
-
     it("should project single property using dynamic property access", () => {
       // Test map projection in a comparison using ['prop'] syntax
       const { steps } = parseQueryToSteps(
         "MATCH (n:Person) WHERE n{.name}['name'] = 'Alice' RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -156,7 +153,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person) WHERE n{.name, .age}['age'] > 40 RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       // Demo graph: Alice 30, Bob 25, Charlie 35, Dave 40, Erin 45, Fiona 50, George 55
       // > 40: Erin 45, Fiona 50, George 55
@@ -168,7 +165,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person) WHERE n{.*}['name'] = 'Alice' RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -179,7 +176,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person) WHERE n{status: 'active'}['status'] = 'active' RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       // All persons should match since status: 'active' is always in the projection
       expect(results.length).toBeGreaterThan(0);
@@ -192,7 +189,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person)-[:knows]->(m:Person) WHERE m.name = 'Bob' AND n{m}['m'] = m RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       // Alice knows Bob
       expect(results).toHaveLength(1);
@@ -205,7 +202,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person) WHERE n{}['name'] = null RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       // Empty projection has no properties, so accessing 'name' returns null
       expect(results.length).toBeGreaterThan(0);
@@ -216,7 +213,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person) WHERE n{doubleAge: n.age * 2}['doubleAge'] > 80 RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       // Demo graph: Alice 30, Bob 25, Charlie 35, Dave 40, Erin 45, Fiona 50, George 55
       // doubleAge > 80: Erin (90), Fiona (100), George (110)
@@ -224,13 +221,12 @@ describe("Map Projection", () => {
     });
 
     it("should work with parameters in literal entry", () => {
-      setQueryParams({ threshold: 90 });
-
       const { steps } = parseQueryToSteps(
         "MATCH (n:Person) WHERE n{doubleAge: n.age * 2}['doubleAge'] > $threshold RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const context = new QueryContext(graph, { threshold: 90 });
+      const results = [...traverser.traverse(graph, [undefined], context)];
 
       // Demo graph: Alice 30, Bob 25, Charlie 35, Dave 40, Erin 45, Fiona 50, George 55
       // doubleAge > 90: Fiona (100), George (110)
@@ -242,7 +238,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person) WHERE n{.name, nonexistent}['nonexistent'] = null RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       // nonexistent variable doesn't exist, so it's null
       expect(results.length).toBeGreaterThan(0);
@@ -253,7 +249,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person) WHERE n{.name, .*}['age'] = 30 RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -264,7 +260,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person) WHERE n{lowerName: toLower(n.name)}['lowerName'] = 'alice' RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -275,7 +271,7 @@ describe("Map Projection", () => {
         "MATCH (n:Person) WHERE n{.name}['name'] = 'Alice' AND n{.age}['age'] = 30 RETURN n.name",
       );
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -302,7 +298,7 @@ describe("Map Projection", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = [...traverser.traverse(graph, [undefined])];
+      const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");

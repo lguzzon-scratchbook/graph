@@ -2,6 +2,7 @@ import { test, expect, describe } from "vitest";
 import { parse } from "../grammar.js";
 import { anyAstToSteps } from "../astToSteps.js";
 import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import type { Query } from "../AST.js";
@@ -26,7 +27,7 @@ function executeQuery(graph: Graph<typeof schema>, queryString: string): unknown
   const ast = parse(queryString) as Query;
   const steps = anyAstToSteps(ast);
   const traverser = createTraverser(steps);
-  return Array.from(traverser.traverse(graph, []));
+  return Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 }
 
 describe("count(*) support", () => {

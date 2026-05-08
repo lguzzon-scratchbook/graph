@@ -2,6 +2,7 @@ import { expect, test, describe } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { createTraverser, OptionalMatchStep } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { createDemoGraph } from "../getDemoGraph.js";
 import type { Query } from "../AST.js";
 
@@ -95,7 +96,7 @@ describe("OPTIONAL MATCH execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [])];
+    const results = [...traverser.traverse(graph, [], new QueryContext(graph, {}))];
 
     expect(results).toHaveLength(1);
     expect(results[0]).toBeInstanceOf(Array);
@@ -116,7 +117,7 @@ describe("OPTIONAL MATCH execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [])];
+    const results = [...traverser.traverse(graph, [], new QueryContext(graph, {}))];
 
     // Alice knows 2 people (Bob and Charlie), so we should have 2 results
     expect(results).toHaveLength(2);
@@ -141,7 +142,7 @@ describe("OPTIONAL MATCH execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [])];
+    const results = [...traverser.traverse(graph, [], new QueryContext(graph, {}))];
 
     // Alice knows 2 people
     expect(results).toHaveLength(2);
@@ -155,7 +156,7 @@ describe("OPTIONAL MATCH execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [])];
+    const results = [...traverser.traverse(graph, [], new QueryContext(graph, {}))];
 
     // All results should have Alice as n
     for (const result of results) {
@@ -172,7 +173,7 @@ describe("OPTIONAL MATCH execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [])];
+    const results = [...traverser.traverse(graph, [], new QueryContext(graph, {}))];
 
     expect(results).toHaveLength(1);
     const [nValue, mValue] = results[0] as any[];
@@ -187,7 +188,7 @@ describe("OPTIONAL MATCH execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [])];
+    const results = [...traverser.traverse(graph, [], new QueryContext(graph, {}))];
 
     // Should yield null bindings when no match
     // This depends on how we handle OPTIONAL MATCH without preceding MATCH
@@ -202,7 +203,7 @@ describe("OPTIONAL MATCH edge cases", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [])];
+    const results = [...traverser.traverse(graph, [], new QueryContext(graph, {}))];
 
     // No results since no :NonExistent nodes exist
     expect(results).toHaveLength(0);
@@ -216,7 +217,7 @@ describe("OPTIONAL MATCH edge cases", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [])];
+    const results = [...traverser.traverse(graph, [], new QueryContext(graph, {}))];
 
     // Alice exists but the WHERE filters out all matches, so m should be null
     expect(results).toHaveLength(1);
@@ -232,7 +233,7 @@ describe("OPTIONAL MATCH edge cases", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [])];
+    const results = [...traverser.traverse(graph, [], new QueryContext(graph, {}))];
 
     // Alice exists but no one with :NonExistentLabel, so m should be null
     expect(results).toHaveLength(1);

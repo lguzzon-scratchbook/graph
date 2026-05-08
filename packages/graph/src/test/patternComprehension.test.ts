@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser, QueryContext } from "../Steps.js";
 import type { Query, PatternComprehension } from "../AST.js";
 import type { GraphSchema } from "../GraphSchema.js";
 import { StandardSchemaV1 } from "@standard-schema/spec";
@@ -189,17 +189,15 @@ describe("Pattern Comprehension", () => {
       // Diana knows nobody (isolated in outgoing direction)
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should return neighbors via pattern comprehension", () => {
       // Find persons who have at least one friend
       const query = `MATCH (a:Person) WHERE size([(a)-[:KNOWS]->(b) | b.name]) > 0 RETURN a.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice knows 2, Bob knows 1, Diana knows 0, Charlie knows 0
       expect(results).toHaveLength(2);
@@ -213,7 +211,9 @@ describe("Pattern Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Charlie and Diana know nobody
       expect(results).toHaveLength(2);
@@ -227,7 +227,9 @@ describe("Pattern Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice knows Bob (28) and Charlie (45)
       expect(results).toHaveLength(1);
@@ -252,17 +254,15 @@ describe("Pattern Comprehension", () => {
       graph.addEdge(alice, "KNOWS", diana, { since: 2018 });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should filter pattern matches with WHERE", () => {
       // Find persons who know someone over 40
       const query = `MATCH (a:Person) WHERE size([(a)-[:KNOWS]->(b) WHERE b.age > 40 | b.name]) > 0 RETURN a.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Only Alice knows Charlie (45)
       expect(results).toHaveLength(1);
@@ -275,7 +275,9 @@ describe("Pattern Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice knows Bob (28) and Diana (32) under 40
       expect(results).toHaveLength(1);
@@ -283,13 +285,13 @@ describe("Pattern Comprehension", () => {
     });
 
     it("should support parameters in filter", () => {
-      setQueryParams({ minAge: 30 });
+      const context = new QueryContext(graph, { minAge: 30 });
 
       const query = `MATCH (a:Person) WHERE size([(a)-[:KNOWS]->(b) WHERE b.age > $minAge | b.name]) = 2 RETURN a.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       // Alice knows Charlie (45) and Diana (32) over 30
       expect(results).toHaveLength(1);
@@ -310,17 +312,15 @@ describe("Pattern Comprehension", () => {
       graph.addVertex("Movie", { title: "Inception", year: 2010 });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should match all nodes of a label via pattern comprehension", () => {
       // Count movies using pattern comprehension
       const query = `MATCH (a:Person) WHERE size([(m:Movie) | m.title]) = 2 RETURN a.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // All persons see 2 movies (pattern comprehension is independent of outer match)
       expect(results).toHaveLength(2);
@@ -332,7 +332,9 @@ describe("Pattern Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // All persons see 1 movie from 2000s (Inception)
       expect(results).toHaveLength(2);
@@ -353,17 +355,15 @@ describe("Pattern Comprehension", () => {
       graph.addEdge(alice, "KNOWS", alice, { since: 2020 });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should handle self-referencing edges", () => {
       // Alice knows herself
       const query = `MATCH (a:Person) WHERE size([(a)-[:KNOWS]->(b) | b.name]) = 1 AND a.name = 'Alice' RETURN a.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -374,7 +374,9 @@ describe("Pattern Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // No one acted in any movie
       expect(results).toHaveLength(2);
@@ -389,7 +391,9 @@ describe("Pattern Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(emptyGraph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(emptyGraph, [undefined], new QueryContext(emptyGraph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Solo");
@@ -430,17 +434,15 @@ describe("Pattern Comprehension", () => {
       graph.addEdge(ellen, "ACTED_IN", inception, { role: "Ariadne" });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should find actors with multiple movie appearances", () => {
       // Find actors who acted in at least 1 movie
       const query = `MATCH (p:Person) WHERE size([(p)-[:ACTED_IN]->(m:Movie) | m.title]) > 0 RETURN p.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(3);
       expect(results).toContain("Keanu Reeves");
@@ -454,7 +456,9 @@ describe("Pattern Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Only Keanu acted in a movie before 2005 (The Matrix, 1999)
       expect(results).toHaveLength(1);

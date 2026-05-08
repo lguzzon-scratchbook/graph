@@ -1,6 +1,5 @@
-import { describe, test, expect, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
-import { clearQueryParams } from "../Steps.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import type { Query, ParenthesizedPathPattern, Pattern } from "../AST.js";
@@ -176,10 +175,6 @@ describe("Parenthesized Path Patterns", () => {
 
     beforeEach(() => {
       graph = new Graph({ schema, storage: new InMemoryGraphStorage() });
-    });
-
-    afterEach(() => {
-      clearQueryParams();
     });
 
     describe("Basic Parenthesized Patterns", () => {

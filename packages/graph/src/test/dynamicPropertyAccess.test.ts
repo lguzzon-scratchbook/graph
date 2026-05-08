@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query, DynamicPropertyAccess, ExpressionCondition } from "../AST.js";
 import type { GraphSchema } from "../GraphSchema.js";
 import { StandardSchemaV1 } from "@standard-schema/spec";
@@ -148,17 +149,15 @@ describe("Dynamic Property Access", () => {
       });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should filter using dynamic property access", () => {
       const query = `MATCH (n:Person) WHERE n['name'] = 'Alice' RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
     });
@@ -169,7 +168,9 @@ describe("Dynamic Property Access", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Bob");
     });
@@ -180,7 +181,9 @@ describe("Dynamic Property Access", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined])) as string[];
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      ) as string[];
       expect(results).toHaveLength(2);
       expect(results.sort()).toEqual(["Alice", "Charlie"]);
     });
@@ -191,20 +194,22 @@ describe("Dynamic Property Access", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
       // All should match since 'nonexistent' property doesn't exist
       expect(results).toHaveLength(3);
     });
 
     it("should work with parameterized property names", () => {
-      setQueryParams({ prop: "name", val: "Charlie" });
       // When index is a parameter, it uses ListIndexExpression which falls back to dynamic access
       const query = `MATCH (n:Person) WHERE n['name'] = $val RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
+      const context = new QueryContext(graph, { prop: "name", val: "Charlie" });
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Charlie");
     });
@@ -215,7 +220,9 @@ describe("Dynamic Property Access", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
     });
@@ -226,7 +233,9 @@ describe("Dynamic Property Access", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined])) as string[];
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      ) as string[];
       expect(results).toHaveLength(2);
       expect(results.sort()).toEqual(["Alice", "Bob"]);
     });
@@ -242,10 +251,6 @@ describe("Dynamic Property Access", () => {
       });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should handle empty string as property name", () => {
       const query = `MATCH (n:Person) WHERE n[''] IS NULL RETURN n`;
       const ast = parse(query) as Query;
@@ -254,7 +259,9 @@ describe("Dynamic Property Access", () => {
       graph.addVertex("Person", { name: "Test" });
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
       // Empty property name should return null, so IS NULL should match
       expect(results).toHaveLength(1);
     });
@@ -268,7 +275,9 @@ describe("Dynamic Property Access", () => {
       graph.addVertex("Person", { name: "Test" });
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
       expect(results).toHaveLength(1);
     });
 

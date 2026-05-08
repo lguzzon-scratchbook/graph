@@ -1,7 +1,7 @@
-import { expect, test, describe, beforeEach, afterEach } from "vitest";
+import { expect, test, describe } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, setQueryParams, clearQueryParams, getQueryParams } from "../Steps.js";
+import { createTraverser, QueryContext } from "../Steps.js";
 import { createDemoGraph } from "../getDemoGraph.js";
 import type { Query, ParameterRef } from "../AST.js";
 
@@ -99,37 +99,15 @@ describe("Parameter astToSteps conversion", () => {
 });
 
 describe("Parameter execution", () => {
-  beforeEach(() => {
-    clearQueryParams();
-  });
-
-  afterEach(() => {
-    clearQueryParams();
-  });
-
-  test("setQueryParams and getQueryParams work correctly", () => {
-    setQueryParams({ name: "Alice", age: 30 });
-    const params = getQueryParams();
-    expect(params.name).toBe("Alice");
-    expect(params.age).toBe(30);
-  });
-
-  test("clearQueryParams clears all parameters", () => {
-    setQueryParams({ name: "Alice" });
-    clearQueryParams();
-    const params = getQueryParams();
-    expect(params).toEqual({});
-  });
-
   test("filters by parameter value in WHERE clause", () => {
     const query = "MATCH (u:Person) WHERE u.name = $name RETURN u";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    // Set parameter to find Alice
-    setQueryParams({ name: "Alice" });
-    const results = [...traverser.traverse(graph, [])];
+    // Create context with parameter to find Alice
+    const context = new QueryContext(graph, { name: "Alice" });
+    const results = [...traverser.traverse(graph, [], context)];
     expect(results).toHaveLength(1);
 
     // Verify it found Alice - result is an array with the vertex
@@ -144,8 +122,8 @@ describe("Parameter execution", () => {
     const traverser = createTraverser(steps);
 
     // Alice is 30 years old in the demo graph
-    setQueryParams({ age: 30 });
-    const results = [...traverser.traverse(graph, [])];
+    const context = new QueryContext(graph, { age: 30 });
+    const results = [...traverser.traverse(graph, [], context)];
     expect(results).toHaveLength(1);
     expect((results[0] as any[])[0]?.get?.("name")).toBe("Alice");
   });
@@ -157,8 +135,8 @@ describe("Parameter execution", () => {
     const traverser = createTraverser(steps);
 
     // Find people older than 25
-    setQueryParams({ minAge: 25 });
-    const results = [...traverser.traverse(graph, [])];
+    const context = new QueryContext(graph, { minAge: 25 });
+    const results = [...traverser.traverse(graph, [], context)];
     // Should get people with age > 25
     expect(results.length).toBeGreaterThan(0);
     for (const result of results) {
@@ -173,8 +151,9 @@ describe("Parameter execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    setQueryParams({}); // No 'missing' parameter
-    const results = [...traverser.traverse(graph, [])];
+    // Missing parameter scenario - pass empty context
+    const context = new QueryContext(graph, {});
+    const results = [...traverser.traverse(graph, [], context)];
     expect(results).toHaveLength(0);
   });
 
@@ -184,8 +163,8 @@ describe("Parameter execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    setQueryParams({ nick: null });
-    const results = [...traverser.traverse(graph, [])];
+    const context = new QueryContext(graph, { nick: null });
+    const results = [...traverser.traverse(graph, [], context)];
     // People with no nickname (undefined or null) should match
     // But since comparison with null is tricky, this tests the path works
     expect(Array.isArray(results)).toBe(true);
@@ -197,8 +176,8 @@ describe("Parameter execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    setQueryParams({ name: "Alice", age: 30 });
-    const results = [...traverser.traverse(graph, [])];
+    const context = new QueryContext(graph, { name: "Alice", age: 30 });
+    const results = [...traverser.traverse(graph, [], context)];
     expect(results).toHaveLength(1);
     expect((results[0] as any[])[0]?.get?.("name")).toBe("Alice");
   });
@@ -208,34 +187,26 @@ describe("Parameter execution", () => {
     const query2 = "MATCH (u:Person) WHERE u.name = $name RETURN u";
 
     // First query for Alice
-    setQueryParams({ name: "Alice" });
+    const context1 = new QueryContext(graph, { name: "Alice" });
     const ast1 = parse(query1) as Query;
     const steps1 = astToSteps(ast1);
     const traverser1 = createTraverser(steps1);
-    const results1 = [...traverser1.traverse(graph, [])];
+    const results1 = [...traverser1.traverse(graph, [], context1)];
     expect(results1).toHaveLength(1);
     expect((results1[0] as any[])[0]?.get?.("name")).toBe("Alice");
 
-    // Second query for Bob
-    setQueryParams({ name: "Bob" });
+    // Second query for Bob (new context)
+    const context2 = new QueryContext(graph, { name: "Bob" });
     const ast2 = parse(query2) as Query;
     const steps2 = astToSteps(ast2);
     const traverser2 = createTraverser(steps2);
-    const results2 = [...traverser2.traverse(graph, [])];
+    const results2 = [...traverser2.traverse(graph, [], context2)];
     expect(results2).toHaveLength(1);
     expect((results2[0] as any[])[0]?.get?.("name")).toBe("Bob");
   });
 });
 
 describe("Parameter in SET clause execution", () => {
-  beforeEach(() => {
-    clearQueryParams();
-  });
-
-  afterEach(() => {
-    clearQueryParams();
-  });
-
   test("SET with parameter updates property", () => {
     // Create a fresh graph for mutation testing
     const { graph: testGraph, alice: testAlice } = createDemoGraph();
@@ -245,8 +216,8 @@ describe("Parameter in SET clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    setQueryParams({ newAge: 99 });
-    const results = [...traverser.traverse(testGraph, [])];
+    const context = new QueryContext(testGraph, { newAge: 99 });
+    const results = [...traverser.traverse(testGraph, [], context)];
     expect(results).toHaveLength(1);
 
     // Verify the age was updated
@@ -261,8 +232,8 @@ describe("Parameter in SET clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    setQueryParams({ nick: "Ally" });
-    for (const _ of traverser.traverse(testGraph, []));
+    const context = new QueryContext(testGraph, { nick: "Ally" });
+    for (const _ of traverser.traverse(testGraph, [], context));
 
     expect(testAlice.get("nickname" as any)).toBe("Ally");
   });

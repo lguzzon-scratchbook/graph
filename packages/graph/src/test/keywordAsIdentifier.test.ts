@@ -6,6 +6,7 @@ import { InMemoryGraphStorage } from "../GraphStorage.js";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query } from "../AST.js";
 
 function makeType<T>(_defaultValue: T): StandardSchemaV1<T> {
@@ -50,7 +51,7 @@ function executeQuery(graph: Graph<GraphSchema>, queryString: string): unknown[]
   const ast = parse(queryString) as Query;
   const steps = astToSteps(ast);
   const traverser = createTraverser(steps);
-  return Array.from(traverser.traverse(graph, []));
+  return Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 }
 
 describe("Keywords as identifiers", () => {

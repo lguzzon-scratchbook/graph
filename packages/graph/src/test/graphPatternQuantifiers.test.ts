@@ -1,6 +1,5 @@
-import { describe, test, expect, beforeEach, afterEach } from "vitest";
+import { describe, test, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
-import { clearQueryParams } from "../Steps.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import type { Query, Pattern, EdgePattern } from "../AST.js";
@@ -185,10 +184,6 @@ describe("Graph Pattern Quantifiers", () => {
       graph.addEdge(b, "FOLLOWS", c, {});
       graph.addEdge(c, "FOLLOWS", d, {});
       graph.addEdge(d, "FOLLOWS", e, {});
-    });
-
-    afterEach(() => {
-      clearQueryParams();
     });
 
     test("should execute [+] - one or more hops", () => {

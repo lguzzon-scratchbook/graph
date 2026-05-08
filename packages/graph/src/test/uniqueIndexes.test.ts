@@ -8,7 +8,8 @@ import {
 } from "../index.js";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query } from "../AST.js";
 
 // Test schema with unique indexed properties
@@ -338,7 +339,7 @@ describe("Unique Indexes", () => {
       `) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, []));
+      const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
       expect(results.length).toBe(1);
       expect(results[0]).toEqual(["alice@example.com", 26]);
@@ -357,7 +358,7 @@ describe("Unique Indexes", () => {
       `) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, []));
+      const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
       expect(results.length).toBe(1);
       expect(results[0]).toEqual(["newuser@example.com", "newuser"]);
@@ -386,7 +387,7 @@ describe("Unique Indexes", () => {
       `) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, []));
+      const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
       expect(results.length).toBe(1);
       expect(results[0]).toEqual(["user50@example.com", "Updated User 50"]);
@@ -413,35 +414,33 @@ describe("Unique Indexes", () => {
       const steps = astToSteps(ast);
 
       // First, match existing user
-      setQueryParams({
+      const context1 = new QueryContext(graph, {
         email: "existing@example.com",
         username: "existing2",
         name: "Should Not Create",
         age: 35,
       });
       const traverser1 = createTraverser(steps);
-      const results1 = Array.from(traverser1.traverse(graph, []));
+      const results1 = Array.from(traverser1.traverse(graph, [], context1));
 
       expect(results1.length).toBe(1);
       expect(results1[0]).toEqual(["existing@example.com", 35]);
 
       // Then, create new user
-      setQueryParams({
+      const context2 = new QueryContext(graph, {
         email: "newuser@example.com",
         username: "newuser",
         name: "New User",
         age: 25,
       });
       const traverser2 = createTraverser(steps);
-      const results2 = Array.from(traverser2.traverse(graph, []));
+      const results2 = Array.from(traverser2.traverse(graph, [], context2));
 
       expect(results2.length).toBe(1);
       expect(results2[0]).toEqual(["newuser@example.com", 25]);
 
       const allUsers = Array.from(graph.getVertices("User"));
       expect(allUsers.length).toBe(2);
-
-      clearQueryParams();
     });
   });
 

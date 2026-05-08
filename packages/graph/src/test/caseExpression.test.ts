@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import type { Query, SimpleCaseExpression, SearchedCaseExpression } from "../AST.js";
@@ -286,7 +287,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Should return Alice, Charlie, and Diana (status = 'active')
         expect(results).toHaveLength(3);
@@ -306,7 +307,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Should return Alice and Diana (role = 'admin')
         expect(results).toHaveLength(2);
@@ -324,7 +325,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // All users have role admin or user, not manager, so all should return ELSE value
         expect(results).toHaveLength(4);
@@ -339,7 +340,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // No one has role 'manager', and CASE returns null without ELSE
         // null = 50 is false, so no results
@@ -357,7 +358,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Alice (30) and Bob (25) are adults (18 < age <= 60)
         expect(results).toHaveLength(2);
@@ -375,7 +376,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Only Diana (65) is a senior
         expect(results).toHaveLength(1);
@@ -392,7 +393,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Only Charlie (15) is a minor
         expect(results).toHaveLength(1);
@@ -414,7 +415,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Only Alice is admin with score > 90
         expect(results).toHaveLength(1);
@@ -433,7 +434,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Alice: 95 + 10 = 105 > 100 ✓
         // Diana: 60 + 10 = 70 < 100 ✗
@@ -453,7 +454,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Alice: 2 * 95 = 190 > 150 ✓
         // Bob: 1 * 75 = 75 < 150 ✗ (inactive)
@@ -467,25 +468,17 @@ describe("CASE expression support", () => {
     });
 
     describe("CASE with parameters", () => {
-      beforeEach(() => {
-        clearQueryParams();
-      });
-
-      afterEach(() => {
-        clearQueryParams();
-      });
-
       it("should use parameters in simple CASE alternatives", () => {
         const query = `
           MATCH (n:User)
           WHERE CASE n.status WHEN $status THEN 1 ELSE 0 END = 1
           RETURN n
         `;
-        setQueryParams({ status: "active" });
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const context = new QueryContext(graph, { status: "active" });
+        const results = [...traverser.traverse(graph, [undefined], context)];
 
         expect(results).toHaveLength(3);
       });
@@ -496,11 +489,11 @@ describe("CASE expression support", () => {
           WHERE CASE WHEN n.age > $minAge THEN 'adult' ELSE 'minor' END = 'adult'
           RETURN n
         `;
-        setQueryParams({ minAge: 18 });
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const context = new QueryContext(graph, { minAge: 18 });
+        const results = [...traverser.traverse(graph, [undefined], context)];
 
         // Alice (30), Bob (25), Diana (65) are over 18
         expect(results).toHaveLength(3);
@@ -517,7 +510,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toHaveLength(1);
         const names = results.map((r) => (r as any[])[0]?.get("name"));
@@ -543,7 +536,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Bob (inactive) and Eve (null status) should match
         expect(results).toHaveLength(2);
@@ -565,7 +558,7 @@ describe("CASE expression support", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Only Alice is admin with score > 90
         expect(results).toHaveLength(1);

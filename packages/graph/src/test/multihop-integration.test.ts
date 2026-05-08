@@ -6,6 +6,7 @@ import { InMemoryGraphStorage } from "../GraphStorage.js";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query, Pattern } from "../AST.js";
 
 function makeType<T>(_defaultValue: T): StandardSchemaV1<T> {
@@ -84,7 +85,7 @@ test("Multi-hop query integration tests - should execute 2-hop query with single
 
   // Verify it can be executed
   const traverser = createTraverser(steps);
-  const results = Array.from(traverser.traverse(graph, []));
+  const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
   expect(results).toBeDefined();
 });
 

@@ -21,6 +21,7 @@ import {
 import { parse } from "../grammar.js";
 import { anyAstToSteps } from "../astToSteps.js";
 import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { GraphSchema } from "../GraphSchema.js";
 import type { Query, UnionQuery, MultiStatement } from "../AST.js";
 
@@ -56,7 +57,7 @@ function executeQuery(graph: Graph<GraphSchema>, queryString: string): unknown[]
   const ast = parse(queryString) as Query | UnionQuery | MultiStatement;
   const steps = anyAstToSteps(ast);
   const traverser = createTraverser(steps);
-  return Array.from(traverser.traverse(graph, []));
+  return Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 }
 
 function query(q: string) {

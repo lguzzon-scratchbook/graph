@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query } from "../AST.js";
 import type { GraphSchema } from "../GraphSchema.js";
 import { StandardSchemaV1 } from "@standard-schema/spec";
@@ -51,10 +52,6 @@ describe("REDUCE expression", () => {
     graph.addVertex("Person", { name: "Bob", scores: [1, 2, 3, 4], value: 10 });
     graph.addVertex("Person", { name: "Charlie", scores: [], value: 0 });
     graph.addVertex("Person", { name: "Diana", items: ["a", "b", "c"] });
-  });
-
-  afterEach(() => {
-    clearQueryParams();
   });
 
   describe("grammar parsing", () => {
@@ -170,7 +167,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // All persons should match since 1+2+3 = 6
       expect(results).toHaveLength(4);
@@ -182,7 +181,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice has scores [10, 20, 30] = 60
       expect(results).toHaveLength(1);
@@ -195,7 +196,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // 2*3*4 = 24, all persons match
       expect(results).toHaveLength(4);
@@ -207,7 +210,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Diana has items ['a', 'b', 'c'] -> 'abc'
       expect(results).toHaveLength(1);
@@ -220,7 +225,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Charlie has empty scores []
       expect(results).toContain("Charlie");
@@ -233,7 +240,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Diana's scores is undefined/null, so returns initial value 100
       expect(results).toHaveLength(1);
@@ -241,26 +250,26 @@ describe("REDUCE expression", () => {
     });
 
     it("works with parameters for initial value", () => {
-      setQueryParams({ init: 10 });
       const ast = parse(
         "MATCH (n:Person) WHERE REDUCE(total = $init, x IN [1,2,3] | total + x) = 16 RETURN n.name",
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const context = new QueryContext(graph, { init: 10 });
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       // 10 + 1 + 2 + 3 = 16, all persons match
       expect(results).toHaveLength(4);
     });
 
     it("works with parameters for list", () => {
-      setQueryParams({ numbers: [5, 10, 15] });
       const ast = parse(
         "MATCH (n:Person) WHERE REDUCE(s = 0, x IN $numbers | s + x) = 30 RETURN n.name",
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const context = new QueryContext(graph, { numbers: [5, 10, 15] });
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       // 5 + 10 + 15 = 30, all persons match
       expect(results).toHaveLength(4);
@@ -272,7 +281,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice: value=5, sum = 0 + 1*5 + 2*5 + 3*5 = 30 > 0 ✓
       // Bob: value=10, sum = 0 + 1*10 + 2*10 + 3*10 = 60 > 0 ✓
@@ -288,7 +299,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // inner REDUCE: 0 + 10 + 20 = 30
       // outer REDUCE: 0 + 30 + 30 = 60
@@ -301,7 +314,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice: 60 >= 10 ✓
       // Bob: 10 >= 10 ✓
@@ -317,7 +332,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Only Alice starts with 'A' and has sum 60 > 50
       expect(results).toHaveLength(1);
@@ -336,7 +353,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice: 60 * 2 = 120 > 100 ✓
       // Bob: 10 * 2 = 20 > 100 ✗
@@ -353,7 +372,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Single value 42 treated as [42], so sum = 0 + 42 = 42
       expect(results).toHaveLength(1);
@@ -368,7 +389,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Diana has items ['a', 'b', 'c'], each size() = 1, so total = 3
       expect(results).toHaveLength(1);
@@ -384,7 +407,9 @@ describe("REDUCE expression", () => {
       ) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // The 'total' in REDUCE should shadow n.total, so result is 6
       expect(results).toHaveLength(1);

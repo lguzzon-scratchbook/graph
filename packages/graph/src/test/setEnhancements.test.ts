@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser, QueryContext } from "../Steps.js";
 import { createDemoGraph, type DemoSchema } from "../getDemoGraph.js";
 import type { Query, SetAllProperties, SetAddProperties } from "../AST.js";
 import type { Graph } from "../Graph.js";
@@ -155,11 +155,6 @@ describe("SET clause enhancements", () => {
       graph = demo.graph;
       alice = demo.alice;
       bob = demo.bob;
-      clearQueryParams();
-    });
-
-    afterEach(() => {
-      clearQueryParams();
     });
 
     describe("SET n = {props} (replace all properties)", () => {
@@ -174,7 +169,7 @@ describe("SET clause enhancements", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toHaveLength(1);
 
@@ -184,14 +179,14 @@ describe("SET clause enhancements", () => {
       });
 
       it("should replace properties with parameter map", () => {
-        setQueryParams({ props: { name: "Charlie", age: 100 } });
+        const context = new QueryContext(graph, { props: { name: "Charlie", age: 100 } });
 
         const ast = parse(
           "MATCH (n:Person) WHERE n.name = 'Alice' SET n = $props RETURN n",
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], context)];
 
         expect(results).toHaveLength(1);
         expect(alice.get("name")).toBe("Charlie");
@@ -202,7 +197,7 @@ describe("SET clause enhancements", () => {
         const ast = parse("MATCH (n:Person) WHERE n.name = 'Alice' SET n = {} RETURN n") as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toHaveLength(1);
         // Properties should be cleared
@@ -222,7 +217,7 @@ describe("SET clause enhancements", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toHaveLength(1);
         // Original properties preserved
@@ -238,7 +233,7 @@ describe("SET clause enhancements", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toHaveLength(1);
         // Updated property
@@ -250,14 +245,14 @@ describe("SET clause enhancements", () => {
       });
 
       it("should merge properties with parameter map", () => {
-        setQueryParams({ newProps: { age: 99, ref: "updated-ref" } });
+        const context = new QueryContext(graph, { newProps: { age: 99, ref: "updated-ref" } });
 
         const ast = parse(
           "MATCH (n:Person) WHERE n.name = 'Bob' SET n += $newProps RETURN n",
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], context)];
 
         expect(results).toHaveLength(1);
         expect(bob.get("name")).toBe("Bob");
@@ -273,7 +268,7 @@ describe("SET clause enhancements", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toHaveLength(1);
 
@@ -291,7 +286,7 @@ describe("SET clause enhancements", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // Should update all Person nodes (there are 7 in demo graph)
         expect(results.length).toBeGreaterThan(1);
@@ -304,7 +299,7 @@ describe("SET clause enhancements", () => {
 
     describe("Error handling", () => {
       it("should throw error when parameter is not an object", () => {
-        setQueryParams({ props: "not an object" });
+        const context = new QueryContext(graph, { props: "not an object" });
 
         const ast = parse(
           "MATCH (n:Person) WHERE n.name = 'Alice' SET n = $props RETURN n",
@@ -312,13 +307,13 @@ describe("SET clause enhancements", () => {
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
 
-        expect(() => [...traverser.traverse(graph, [undefined])]).toThrow(
+        expect(() => [...traverser.traverse(graph, [undefined], context)]).toThrow(
           "Parameter 'props' must be an object/map",
         );
       });
 
       it("should throw error when parameter is null", () => {
-        setQueryParams({ props: null });
+        const context = new QueryContext(graph, { props: null });
 
         const ast = parse(
           "MATCH (n:Person) WHERE n.name = 'Alice' SET n = $props RETURN n",
@@ -326,7 +321,7 @@ describe("SET clause enhancements", () => {
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
 
-        expect(() => [...traverser.traverse(graph, [undefined])]).toThrow(
+        expect(() => [...traverser.traverse(graph, [undefined], context)]).toThrow(
           "Parameter 'props' must be an object/map",
         );
       });
@@ -336,9 +331,9 @@ describe("SET clause enhancements", () => {
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
 
-        expect(() => [...traverser.traverse(graph, [undefined])]).toThrow(
-          "Variable 'm' not found in path",
-        );
+        expect(() => [
+          ...traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+        ]).toThrow("Variable 'm' not found in path");
       });
     });
   });

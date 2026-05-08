@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query, ListComprehension } from "../AST.js";
 import type { GraphSchema } from "../GraphSchema.js";
 import { StandardSchemaV1 } from "@standard-schema/spec";
@@ -149,16 +150,14 @@ describe("List Comprehension", () => {
       graph.addVertex("Person", { name: "Charlie", scores: [] });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should return all elements without filter or projection", () => {
       const query = `MATCH (n:Person) WHERE size([x IN [1,2,3]]) = 3 RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // All three persons match since [1,2,3] always has size 3
       expect(results).toHaveLength(3);
@@ -169,7 +168,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // [4, 5] have size 2, so all persons match
       expect(results).toHaveLength(3);
@@ -180,7 +181,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // [10, 20, 30][0] = 10, so all persons match
       expect(results).toHaveLength(3);
@@ -191,7 +194,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Filtered: [3,4,5], projected: [6,8,10], [0] = 6
       expect(results).toHaveLength(3);
@@ -212,16 +217,14 @@ describe("List Comprehension", () => {
       graph.addVertex("Person", { name: "Charlie", scores: [100, 200] });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should iterate over property values", () => {
       const query = `MATCH (n:Person) WHERE size([x IN n.scores WHERE x > 25]) = 3 RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice has [30,40,50] > 25 (size 3)
       expect(results).toHaveLength(1);
@@ -233,7 +236,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Charlie has [100, 200], doubled first element = 200
       expect(results).toHaveLength(1);
@@ -245,7 +250,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice: [40,50] >= 40 → [4,5] (size 2) > 0 ✓
       // Bob: [4,5] >= 40 → [] (size 0) > 0 ✗
@@ -274,17 +281,15 @@ describe("List Comprehension", () => {
       });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should use outer variable in filter condition", () => {
       // Filter items greater than n.value
       const query = `MATCH (n:Person) WHERE size([x IN n.scores WHERE x > n.value]) = 0 RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice: [1,2,3,4,5] where x > 5 → [] (size 0) ✓
       // Bob: [10,20,30] where x > 3 → [10,20,30] (size 3) ✗
@@ -297,7 +302,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice: [1+5, 2+5, 3+5] = [6,7,8], [0] = 6 ✓
       // Bob: [1+3, 2+3, 3+3] = [4,5,6], [0] = 4 ✗
@@ -306,13 +313,12 @@ describe("List Comprehension", () => {
     });
 
     it("should work with parameters in list comprehension", () => {
-      setQueryParams({ threshold: 15 });
-
       const query = `MATCH (n:Person) WHERE size([x IN n.scores WHERE x > $threshold]) > 0 RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const context = new QueryContext(graph, { threshold: 15 });
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       // Alice: none > 15
       // Bob: [20, 30] > 15
@@ -332,16 +338,14 @@ describe("List Comprehension", () => {
       graph.addVertex("Person", { name: "Charlie" }); // no scores property
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should handle empty list", () => {
       const query = `MATCH (n:Person) WHERE size([x IN n.scores]) = 0 RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Bob has empty array, Charlie has undefined → treated as empty
       expect(results).toHaveLength(2);
@@ -354,7 +358,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice: [1,2,3] > 0 → [1,2,3] (size 3) ✗
       // Bob: [] → (size 0) ✓
@@ -369,7 +375,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // All elements filtered out, size = 0 for everyone
       expect(results).toHaveLength(3);
@@ -380,7 +388,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Empty list, [0] returns null
       expect(results).toHaveLength(3);
@@ -401,7 +411,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Inner: [1*2, 2*2, 3*2] = [2, 4, 6]
       // Outer: [2+1, 4+1, 6+1] = [3, 5, 7]
@@ -429,7 +441,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice: [6,7,8,9,10] * 2 > 10, so 5 elements > 5 is false
       // Bob: all 3 elements pass (200, 400, 600 > 10), size 3 > 5 is false
@@ -444,7 +458,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // [1*1, 2*2, 3*3] = [1, 4, 9], [2] = 9
       expect(results).toHaveLength(2);
@@ -455,7 +471,9 @@ describe("List Comprehension", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice: [2,4,6,8,10] are even, 5 elements
       // Bob: [100,200,300] are all even, 3 elements

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Graph, Vertex, Edge } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
-import { clearQueryParams } from "../Steps.js";
 import { functionRegistry, evaluateFunction, functionArgExpectsPath } from "../FunctionRegistry.js";
 import { TraversalPath, GraphTraversal } from "../Traversals.js";
 import type { GraphSchema } from "../GraphSchema.js";
@@ -225,7 +224,6 @@ describe("Query Execution: Path Functions with Traversal API", () => {
   let charlie: Vertex<typeof testSchema, "Person">;
 
   beforeEach(() => {
-    clearQueryParams();
     graph = new Graph({
       schema: testSchema,
       storage: new InMemoryGraphStorage(),
@@ -301,8 +299,8 @@ describe("Query Execution: Path Functions with Traversal API", () => {
     it("should expose path helper methods for nodes, relationships, length, and sum", () => {
       const g = new GraphTraversal(graph);
 
-      const results = [
-        ...g
+      const results = Array.from(
+        g
           .V(alice.id)
           .shortestPath()
           .to(charlie.id)
@@ -313,7 +311,7 @@ describe("Query Execution: Path Functions with Traversal API", () => {
             sinceValues: path.relationships("since"),
             totalSince: path.sum("since"),
           })),
-      ];
+      );
 
       expect(results).toEqual([
         {

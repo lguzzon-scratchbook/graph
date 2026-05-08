@@ -2,6 +2,7 @@ import { expect, test, describe } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { createTraverser, WithStep } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { createDemoGraph } from "../getDemoGraph.js";
 import type { Query } from "../AST.js";
 
@@ -170,7 +171,7 @@ describe("WITH clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBeGreaterThan(0);
   });
 
@@ -180,7 +181,7 @@ describe("WITH clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(2);
   });
 
@@ -195,9 +196,9 @@ describe("WITH clause execution", () => {
     const allAst = parse(allQuery) as Query;
     const allSteps = astToSteps(allAst);
     const allTraverser = createTraverser(allSteps);
-    const allResults = [...allTraverser.traverse(graph, [undefined])];
+    const allResults = [...allTraverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(Math.max(0, allResults.length - 3));
   });
 
@@ -208,7 +209,7 @@ describe("WITH clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // All results should be unique (check by extracting ids)
     const ids = results.map((r: any) => {
@@ -230,7 +231,7 @@ describe("WITH clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(1);
     // The result is an array with a single value (from ValuesStep after WithStep)
     const resultValue = results[0];
@@ -247,7 +248,7 @@ describe("WITH clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Results should be sorted by age
     const ages = results.map((r: any) => (Array.isArray(r) ? r[0] : r));
@@ -263,7 +264,7 @@ describe("WITH clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Results should be sorted by age descending
     const ages = results.map((r: any) => (Array.isArray(r) ? r[0] : r));

@@ -1,7 +1,8 @@
 import { expect, test, describe } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, UnwindStep, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser, UnwindStep } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { createDemoGraph } from "../getDemoGraph.js";
 import type { Query } from "../AST.js";
 
@@ -154,7 +155,7 @@ describe("UNWIND clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results).toHaveLength(3);
 
     // Results are arrays from ValuesStep, extract the values
@@ -170,7 +171,7 @@ describe("UNWIND clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results).toHaveLength(0);
   });
 
@@ -180,7 +181,7 @@ describe("UNWIND clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results).toHaveLength(2);
 
     const values = results.map((r: any) => (Array.isArray(r) ? r[0] : r));
@@ -194,18 +195,14 @@ describe("UNWIND clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    setQueryParams({ names: ["Alice", "Bob", "Charlie"] });
-    try {
-      const results = [...traverser.traverse(graph, [undefined])];
-      expect(results).toHaveLength(3);
+    const context = new QueryContext(graph, { names: ["Alice", "Bob", "Charlie"] });
+    const results = [...traverser.traverse(graph, [undefined], context)];
+    expect(results).toHaveLength(3);
 
-      const values = results.map((r: any) => (Array.isArray(r) ? r[0] : r));
-      expect(values).toContain("Alice");
-      expect(values).toContain("Bob");
-      expect(values).toContain("Charlie");
-    } finally {
-      clearQueryParams();
-    }
+    const values = results.map((r: any) => (Array.isArray(r) ? r[0] : r));
+    expect(values).toContain("Alice");
+    expect(values).toContain("Bob");
+    expect(values).toContain("Charlie");
   });
 
   test("UNWIND with undefined parameter produces no rows", () => {
@@ -214,8 +211,8 @@ describe("UNWIND clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    clearQueryParams();
-    const results = [...traverser.traverse(graph, [undefined])];
+    const context = new QueryContext(graph, {});
+    const results = [...traverser.traverse(graph, [undefined], context)];
     expect(results).toHaveLength(0);
   });
 
@@ -231,9 +228,11 @@ describe("UNWIND clause execution", () => {
     const countAst = parse(countQuery) as Query;
     const countSteps = astToSteps(countAst);
     const countTraverser = createTraverser(countSteps);
-    const personCount = [...countTraverser.traverse(graph, [undefined])].length;
+    const personCount = [
+      ...countTraverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+    ].length;
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results).toHaveLength(personCount * 3);
   });
 
@@ -245,7 +244,7 @@ describe("UNWIND clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results).toHaveLength(2);
 
     // Both results should have Alice
@@ -267,7 +266,7 @@ describe("UNWIND clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results).toHaveLength(4);
   });
 
@@ -277,7 +276,7 @@ describe("UNWIND clause execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results).toHaveLength(4);
 
     const values = results.map((r: any) => (Array.isArray(r) ? r[0] : r));
@@ -295,7 +294,7 @@ describe("UNWIND with WITH clause", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results).toHaveLength(2);
   });
 
@@ -305,12 +304,8 @@ describe("UNWIND with WITH clause", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    setQueryParams({ nums: [10, 20, 30] });
-    try {
-      const results = [...traverser.traverse(graph, [undefined])];
-      expect(results).toHaveLength(3);
-    } finally {
-      clearQueryParams();
-    }
+    const context = new QueryContext(graph, { nums: [10, 20, 30] });
+    const results = [...traverser.traverse(graph, [undefined], context)];
+    expect(results).toHaveLength(3);
   });
 });

@@ -3,7 +3,8 @@ import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import {
   functionRegistry,
   evaluateFunction,
@@ -330,7 +331,6 @@ describe("Query Execution: Function Calls", () => {
     graph.addVertex("Person", { name: "Alice", age: 30 });
     graph.addVertex("Person", { name: "BOB", age: 25 });
     graph.addVertex("Person", { name: "  Charlie  ", age: 35 });
-    clearQueryParams();
   });
 
   it("should execute query with toLower in WHERE", () => {
@@ -339,7 +339,7 @@ describe("Query Execution: Function Calls", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(1);
     expect(results[0]).toHaveLength(1);
   });
@@ -350,7 +350,7 @@ describe("Query Execution: Function Calls", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(1);
   });
 
@@ -360,7 +360,7 @@ describe("Query Execution: Function Calls", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(1);
     // Single property in RETURN returns the value directly, not an array
     expect(results[0]).toBe("  Charlie  ");
@@ -372,7 +372,7 @@ describe("Query Execution: Function Calls", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     // Alice (30) and Charlie (35) are within 3 of 32
     expect(results.length).toBe(2);
   });
@@ -383,7 +383,7 @@ describe("Query Execution: Function Calls", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(1);
     expect(results[0]).toBe("  Charlie  ");
   });
@@ -394,7 +394,7 @@ describe("Query Execution: Function Calls", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     // "  Charlie  " has length 12
     expect(results.length).toBe(1);
   });
@@ -405,7 +405,7 @@ describe("Query Execution: Function Calls", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(1);
     expect(results[0]).toBe("Alice");
   });
@@ -419,7 +419,7 @@ describe("Query Execution: Function Calls", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(1);
     expect(results[0]).toBe(40);
   });
@@ -433,7 +433,7 @@ describe("Query Execution: Function Calls", () => {
     const traverser = createTraverser(steps);
 
     // Should only match Alice, not the person without a name
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     expect(results.length).toBe(1);
     expect(results[0]).toBe("Alice");
   });
@@ -450,7 +450,6 @@ describe("Type Functions with Graph Elements", () => {
     const alice = graph.addVertex("Person", { name: "Alice", age: 30 });
     const bob = graph.addVertex("Person", { name: "Bob", age: 25 });
     graph.addEdge(alice, "KNOWS", bob, { since: 2020 });
-    clearQueryParams();
   });
 
   it("should evaluate id() function on nodes", () => {

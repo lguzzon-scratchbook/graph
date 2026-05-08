@@ -1,7 +1,8 @@
-import { expect, test, describe, beforeEach, afterEach } from "vitest";
+import { expect, test, describe, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import type { Query, Pattern, NodePattern, EdgePattern } from "../AST.js";
@@ -282,17 +283,13 @@ describe("Backtick identifier query execution", () => {
     graph.addEdge(alice, "knows well", bob, {});
   });
 
-  afterEach(() => {
-    clearQueryParams();
-  });
-
   test("queries with backtick-quoted property name", () => {
     const query = "MATCH (n:Person) WHERE n.`first name` = 'Alice' RETURN n.`first name`";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("Alice");
   });
@@ -304,7 +301,7 @@ describe("Backtick identifier query execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toEqual(["Alice", "Bob"]);
   });
@@ -315,20 +312,19 @@ describe("Backtick identifier query execution", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("Alice");
   });
 
   test("queries with parameter with backtick name", () => {
-    setQueryParams({ "first name": "Alice" });
-
     const query = "MATCH (n:Person) WHERE n.`first name` = $`first name` RETURN n.`last name`";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const context = new QueryContext(graph, { "first name": "Alice" });
+    const results = Array.from(traverser.traverse(graph, [undefined], context));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("Smith");
   });
@@ -361,17 +357,13 @@ describe("Backtick identifier SET/CREATE operations", () => {
     graph.addVertex("Person", { name: "Alice", "full name": "" });
   });
 
-  afterEach(() => {
-    clearQueryParams();
-  });
-
   test("SET with backtick-quoted property name", () => {
     const query = "MATCH (n:Person) SET n.`full name` = 'Alice Smith' RETURN n.`full name`";
     const ast = parse(query) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("Alice Smith");
   });
@@ -382,7 +374,7 @@ describe("Backtick identifier SET/CREATE operations", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("Bob");
   });
@@ -393,7 +385,7 @@ describe("Backtick identifier SET/CREATE operations", () => {
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
 
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("Charlie");
   });

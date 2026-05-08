@@ -7,6 +7,7 @@ import { GraphTraversal } from "../Traversals.js";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { createTraverser, stringifySteps } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query, Pattern } from "../AST.js";
 
 function makeType<T>(_defaultValue: T): StandardSchemaV1<T> {
@@ -32,7 +33,7 @@ function executeQuery(
     console.log(stringifySteps(steps));
   }
   const traverser = createTraverser(steps);
-  return Array.from(traverser.traverse(graph, []));
+  return Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 }
 
 test("New Grammar Features - Edge Properties Parsing - should parse edge pattern with single property", () => {

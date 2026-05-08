@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query, ExistsSubquery } from "../AST.js";
 import type { GraphSchema } from "../GraphSchema.js";
 import { StandardSchemaV1 } from "@standard-schema/spec";
@@ -193,17 +194,15 @@ describe("EXISTS Subquery", () => {
       // Charlie doesn't know anyone
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should return nodes that have at least one outgoing KNOWS relationship", () => {
       const query = `MATCH (n:Person) WHERE EXISTS { (n)-[:KNOWS]->(m) } RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice and Bob have outgoing KNOWS relationships
       expect(results).toHaveLength(2);
@@ -217,7 +216,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice and Bob have outgoing KNOWS relationships
       expect(results).toHaveLength(2);
@@ -231,7 +232,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Charlie and Diana don't have outgoing KNOWS relationships
       expect(results).toHaveLength(2);
@@ -245,7 +248,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice and Bob have outgoing KNOWS relationships
       expect(results).toHaveLength(2);
@@ -259,7 +264,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Bob, Charlie, and Diana have incoming KNOWS relationships
       expect(results).toHaveLength(3);
@@ -274,7 +281,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Charlie and Diana don't have outgoing KNOWS relationships
       expect(results).toHaveLength(2);
@@ -288,7 +297,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice knows Bob (35) and Charlie (25) - Bob > 30, so Alice matches
       // Bob knows Diana (40) - Diana > 30, so Bob matches
@@ -303,7 +314,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice (30) and Bob (35) have outgoing KNOWS, but only Bob is > 30
       expect(results).toHaveLength(1);
@@ -311,14 +324,13 @@ describe("EXISTS Subquery", () => {
     });
 
     it("should support parameters in EXISTS filter condition", () => {
-      setQueryParams({ minAge: 30 });
-
       const query = `MATCH (n:Person) WHERE EXISTS { (n)-[:KNOWS]->(m) WHERE m.age >= $minAge } RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const context = new QueryContext(graph, { minAge: 30 });
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       // Alice knows Bob (35) and Charlie (25) - Bob >= 30, so Alice matches
       // Bob knows Diana (40) - Diana >= 30, so Bob matches
@@ -333,7 +345,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice and Bob have KNOWS relationships to Person nodes
       expect(results).toHaveLength(2);
@@ -347,7 +361,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // No one has ACTED_IN relationships
       expect(results).toHaveLength(0);
@@ -364,17 +380,15 @@ describe("EXISTS Subquery", () => {
       });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should handle empty graph", () => {
       const query = `MATCH (n:Person) WHERE EXISTS { (n)-[:KNOWS]->(m) } RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(0);
     });
@@ -387,7 +401,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(0);
     });
@@ -402,7 +418,9 @@ describe("EXISTS Subquery", () => {
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
 
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Both Alice and Bob are connected via KNOWS (bidirectional)
       expect(results).toHaveLength(2);

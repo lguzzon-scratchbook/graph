@@ -4,6 +4,7 @@ import { MaxIterationsExceededError, MemoryLimitExceededError } from "../Excepti
 import { GraphTraversal } from "../Traversals.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
+import { QueryContext } from "../QueryContext.js";
 
 const { graph, alice, bob } = createDemoGraph();
 const g = new GraphTraversal(graph);
@@ -117,7 +118,7 @@ test("Repeat step errors - Repeat with maxIterations exceeded throws MaxIteratio
 
   // Should throw MaxIterationsExceededError at iteration 1000
   expect(() => {
-    Array.from(traverser.traverse(chainGraph, inputPaths));
+    Array.from(traverser.traverse(chainGraph, inputPaths, new QueryContext(chainGraph, {})));
   }).toThrow(MaxIterationsExceededError);
 });
 

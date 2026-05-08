@@ -12,6 +12,7 @@ import { StandardSchemaV1 } from "@standard-schema/spec";
 import { parse } from "../grammar.js";
 import { anyAstToSteps } from "../astToSteps.js";
 import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import type { Query, UnionQuery, MultiStatement } from "../AST.js";
@@ -52,7 +53,7 @@ function executeQuery(graph: Graph<GraphSchema>, queryString: string): unknown[]
   const ast = parse(queryString) as Query | UnionQuery | MultiStatement;
   const steps = anyAstToSteps(ast);
   const traverser = createTraverser(steps);
-  return Array.from(traverser.traverse(graph, []));
+  return Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 }
 
 // Create a mock TraversalPath for direct function testing

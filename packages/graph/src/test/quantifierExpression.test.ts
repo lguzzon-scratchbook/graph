@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query, QuantifierExpression } from "../AST.js";
 import type { GraphSchema } from "../GraphSchema.js";
 import { StandardSchemaV1 } from "@standard-schema/spec";
@@ -218,10 +219,6 @@ describe("Quantifier Expressions", () => {
       });
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     describe("ALL quantifier", () => {
       it("should return true when all elements satisfy condition", () => {
         // Alice has all scores > 0
@@ -229,7 +226,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Alice");
         expect(results).toContain("Diana");
@@ -242,7 +239,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Charlie");
       });
@@ -252,7 +249,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).not.toContain("Alice"); // Alice has 10, which is not > 10
         expect(results).toContain("Diana"); // Diana has 100
@@ -267,7 +264,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Alice"); // Has 20 and 30
         expect(results).toContain("Bob"); // Has 15
@@ -280,7 +277,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).not.toContain("Charlie");
       });
@@ -290,7 +287,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toHaveLength(0);
       });
@@ -302,7 +299,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Alice"); // No negative scores
         expect(results).toContain("Diana"); // No negative scores
@@ -315,7 +312,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Charlie");
       });
@@ -325,7 +322,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).not.toContain("Alice");
         expect(results).not.toContain("Bob");
@@ -340,7 +337,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Diana"); // Has exactly one score >= 100
         expect(results).not.toContain("Alice");
@@ -353,7 +350,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).not.toContain("Charlie");
       });
@@ -363,7 +360,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).not.toContain("Alice"); // Has 3 scores > 0
         expect(results).not.toContain("Bob"); // Has 2 scores > 0
@@ -376,7 +373,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toHaveLength(0);
       });
@@ -384,23 +381,23 @@ describe("Quantifier Expressions", () => {
 
     describe("With parameters", () => {
       it("should work with parameter as list", () => {
-        setQueryParams({ values: [1, 2, 3, 4, 5] });
         const query = `MATCH (n:Person) WHERE ALL(x IN $values WHERE x > 0) RETURN n.name`;
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const context = new QueryContext(graph, { values: [1, 2, 3, 4, 5] });
+        const results = [...traverser.traverse(graph, [undefined], context)];
 
         expect(results.length).toBeGreaterThan(0);
       });
 
       it("should work with parameter in condition", () => {
-        setQueryParams({ threshold: 15 });
         const query = `MATCH (n:Person) WHERE ANY(x IN n.scores WHERE x > $threshold) RETURN n.name`;
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const context = new QueryContext(graph, { threshold: 15 });
+        const results = [...traverser.traverse(graph, [undefined], context)];
 
         expect(results).toContain("Alice"); // Has 20, 30
         expect(results).toContain("Diana"); // Has 100
@@ -415,7 +412,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // All people should match since the quantifier is on a literal list
         expect(results.length).toBe(4);
@@ -426,7 +423,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results.length).toBe(4);
       });
@@ -436,7 +433,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results.length).toBe(0);
       });
@@ -448,7 +445,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Alice"); // All scores between 0 and 50
         expect(results).not.toContain("Diana"); // 100 is not < 50
@@ -460,7 +457,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Bob"); // Has -2
         expect(results).toContain("Diana"); // Has 100
@@ -473,7 +470,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Alice");
         expect(results).not.toContain("Diana"); // Doesn't start with 'A'
@@ -489,7 +486,7 @@ describe("Quantifier Expressions", () => {
         const ast = parse(query) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         // ALL on null list should be vacuously true
         expect(results).toContain("NoScores");
@@ -508,7 +505,7 @@ describe("Quantifier Expressions", () => {
 
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = [...traverser.traverse(graph, [undefined])];
+        const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
         expect(results).toContain("Eve"); // 30 > 25
       });

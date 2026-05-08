@@ -974,7 +974,7 @@ export function executeTckQuery(
   const steps = anyAstToSteps(ast);
   const traverser = createTraverser(steps);
   // Create a QueryContext with parameters if provided
-  const context = params ? new QueryContext(graph, params) : undefined;
+  const context = new QueryContext(graph, params ?? {});
   return Array.from(traverser.traverse(graph, [], context));
 }
 

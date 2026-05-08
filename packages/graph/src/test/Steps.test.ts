@@ -10,6 +10,7 @@ import {
   stringifySteps,
   UnionStep,
   VertexStep,
+  QueryContext,
 } from "../Steps.js";
 import { createDemoGraph } from "../getDemoGraph.js";
 import { TraversalPath } from "../Traversals.js";
@@ -61,7 +62,7 @@ test("RepeatStep", () => {
   expect(stepString).toContain("Union");
 
   // Verify steps can be traversed
-  const paths = Array.from(createTraverser(steps).traverse(graph, []));
+  const paths = Array.from(createTraverser(steps).traverse(graph, [], new QueryContext(graph, {})));
   expect(paths.length).toBeGreaterThanOrEqual(0);
 
   // Verify steps can be serialized and deserialized
@@ -77,14 +78,14 @@ describe("DedupStep", () => {
   test("deduplicates primitive values", () => {
     const dedup = new DedupStep({});
     const input = [1, 2, 2, 3, 1, 3];
-    const result = Array.from(dedup.traverse({} as any, input));
+    const result = Array.from(dedup.traverse({} as any, input, {} as QueryContext));
     expect(result).toEqual([1, 2, 3]);
   });
 
   test("deduplicates string arrays", () => {
     const dedup = new DedupStep({});
     const input = [["User"], ["Post"], ["User"], ["Comment"], ["Post"]];
-    const result = Array.from(dedup.traverse({} as any, input));
+    const result = Array.from(dedup.traverse({} as any, input, {} as QueryContext));
     expect(result).toEqual([["User"], ["Post"], ["Comment"]]);
   });
 
@@ -96,7 +97,7 @@ describe("DedupStep", () => {
       [1, 2],
       [5, 6],
     ];
-    const result = Array.from(dedup.traverse({} as any, input));
+    const result = Array.from(dedup.traverse({} as any, input, {} as QueryContext));
     expect(result).toEqual([
       [1, 2],
       [3, 4],
@@ -112,7 +113,7 @@ describe("DedupStep", () => {
       [1, "a"],
       [1, "b"],
     ];
-    const result = Array.from(dedup.traverse({} as any, input));
+    const result = Array.from(dedup.traverse({} as any, input, {} as QueryContext));
     expect(result).toEqual([
       [1, "a"],
       [2, "b"],
@@ -124,21 +125,21 @@ describe("DedupStep", () => {
     const dedup = new DedupStep({});
     // [1] and ["1"] should be different
     const input = [[1], ["1"], [1]];
-    const result = Array.from(dedup.traverse({} as any, input));
+    const result = Array.from(dedup.traverse({} as any, input, {} as QueryContext));
     expect(result).toEqual([[1], ["1"]]);
   });
 
   test("handles empty arrays", () => {
     const dedup = new DedupStep({});
     const input = [[], [], [1], []];
-    const result = Array.from(dedup.traverse({} as any, input));
+    const result = Array.from(dedup.traverse({} as any, input, {} as QueryContext));
     expect(result).toEqual([[], [1]]);
   });
 
   test("handles arrays with null and undefined", () => {
     const dedup = new DedupStep({});
     const input = [[null], [undefined], [null], ["null"]];
-    const result = Array.from(dedup.traverse({} as any, input));
+    const result = Array.from(dedup.traverse({} as any, input, {} as QueryContext));
     expect(result).toEqual([[null], [undefined], ["null"]]);
   });
 
@@ -148,7 +149,7 @@ describe("DedupStep", () => {
     const obj2 = { a: 1 };
     const obj3 = { a: 2 };
     const input = [[obj1], [obj2], [obj3]];
-    const result = Array.from(dedup.traverse({} as any, input));
+    const result = Array.from(dedup.traverse({} as any, input, {} as QueryContext));
     // obj1 and obj2 have same JSON representation, so should deduplicate to 1
     // obj3 is different, so total should be 2
     expect(result).toHaveLength(2);
@@ -161,7 +162,7 @@ describe("DedupStep", () => {
     const path2 = new TraversalPath(undefined, "value2", []);
     const path3 = new TraversalPath(undefined, "value1", []);
     const input = [path1, path2, path3];
-    const result = Array.from(dedup.traverse({} as any, input));
+    const result = Array.from(dedup.traverse({} as any, input, {} as QueryContext));
     // path1 and path3 have same value, should deduplicate
     expect(result).toHaveLength(2);
     expect(result[0]).toBe(path1);

@@ -5,6 +5,7 @@ import { InMemoryGraphStorage } from "../GraphStorage.js";
 import { parse } from "../grammar.js";
 import { anyAstToSteps } from "../astToSteps.js";
 import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query, UnionQuery, MultiStatement } from "../AST.js";
 
 function makeType<T>(_defaultValue: T): StandardSchemaV1<T> {
@@ -53,7 +54,7 @@ function executeQuery(graph: Graph<TestSchema>, query: string): any[] {
   const ast = parse(query) as Query | UnionQuery | MultiStatement;
   const steps = anyAstToSteps(ast);
   const traverser = createTraverser(steps);
-  return Array.from(traverser.traverse(graph, []));
+  return Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 }
 
 describe("Duplicate Removal Queries", () => {

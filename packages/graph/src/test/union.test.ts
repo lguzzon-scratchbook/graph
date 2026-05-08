@@ -1,10 +1,9 @@
-import { describe, test, expect, afterEach } from "vitest";
+import { describe, test, expect } from "vitest";
 import {
   parse,
   anyAstToSteps,
   createTraverser,
-  setQueryParams,
-  clearQueryParams,
+  QueryContext,
   type Query,
   type UnionQuery,
 } from "../index.js";
@@ -145,10 +144,6 @@ describe("UNION clause support", () => {
     // Demo graph has: Alice (30), Bob (25), Charlie (35), Dave (40), Erin (45), Fiona (50), George (55)
     // Things: Apple, Banana, Cherry, Dates, Eggplant, Fig, Grape
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     test("UNION ALL returns all results including duplicates", () => {
       // Query the same set twice with overlapping conditions
       const ast = parse(
@@ -157,7 +152,9 @@ describe("UNION clause support", () => {
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // First query (age > 30): Charlie (35), Dave (40), Erin (45), Fiona (50), George (55) = 5
       // Second query (age < 50): Alice (30), Bob (25), Charlie (35), Dave (40), Erin (45) = 5
@@ -179,7 +176,9 @@ describe("UNION clause support", () => {
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // UNION removes duplicates, so we should get unique names only
       const names = results as string[];
@@ -197,7 +196,9 @@ describe("UNION clause support", () => {
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       const names = results as string[];
       // 7 persons + 7 things = 14 unique names
@@ -217,7 +218,9 @@ describe("UNION clause support", () => {
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       const names = results as string[];
       // Young (< 30): Bob (25)
@@ -236,7 +239,9 @@ describe("UNION clause support", () => {
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // First query returns nothing, second returns Apple
       const names = results as string[];
@@ -245,15 +250,14 @@ describe("UNION clause support", () => {
     });
 
     test("UNION with parameters", () => {
-      setQueryParams({ minAge: 40 });
-
       const ast = parse(
         "MATCH (p:Person) WHERE p.age >= $minAge RETURN p.name UNION MATCH (t:Thing) WHERE t.name = 'Apple' RETURN t.name",
       ) as UnionQuery;
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const context = new QueryContext(graph, { minAge: 40 });
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       const names = results as string[];
       expect(names).toContain("Dave"); // age 40
@@ -274,7 +278,9 @@ describe("UNION clause support", () => {
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Each result should have 2 columns
       for (const result of results) {
@@ -296,7 +302,9 @@ describe("UNION clause support", () => {
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Both queries return Alice - should be deduplicated to 1
       expect(results).toHaveLength(1);
@@ -314,7 +322,9 @@ describe("UNION clause support", () => {
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(0);
     });
@@ -328,7 +338,9 @@ describe("UNION clause support", () => {
 
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps as any);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       const names = results as string[];
       // First branch (age <= 30, ASC): Bob (25), Alice (30)

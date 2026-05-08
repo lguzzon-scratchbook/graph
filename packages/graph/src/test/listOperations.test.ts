@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser, QueryContext } from "../Steps.js";
 import type { Query, ListIndexExpression, SliceExpression, ListLiteralExpr } from "../AST.js";
 import type { GraphSchema } from "../GraphSchema.js";
 import { StandardSchemaV1 } from "@standard-schema/spec";
@@ -270,7 +270,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -281,7 +283,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Bob");
@@ -292,7 +296,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -303,7 +309,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(3);
     });
@@ -313,7 +321,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Single return value is not wrapped in array
       expect(results).toContain("Charlie");
@@ -324,25 +334,25 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // All persons match since the condition is always true
       expect(results).toHaveLength(3);
     });
 
     it("should use parameter as index", () => {
-      setQueryParams({ idx: 2 });
+      const context = new QueryContext(graph, { idx: 2 });
 
       const query = `MATCH (n:Person) WHERE n.items[$idx] = 30 RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
-
-      clearQueryParams();
     });
   });
 
@@ -361,7 +371,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(2);
     });
@@ -371,7 +383,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -382,7 +396,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -393,7 +409,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Alice has 5 items, last 3 = [3,4,5]. Bob has 4 items, last 3 = [b,c,d]
       // Both have size 3 for last 3 elements
@@ -405,7 +423,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -416,7 +436,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Both match since start > end gives empty array
       expect(results).toHaveLength(2);
@@ -427,24 +449,24 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // All match since condition is always true
       expect(results).toHaveLength(2);
     });
 
     it("should use parameter in slice bounds", () => {
-      setQueryParams({ start: 1, end: 4 });
+      const context = new QueryContext(graph, { start: 1, end: 4 });
 
       const query = `MATCH (n:Person) WHERE size(n.items[$start..$end]) = 3 RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       expect(results).toHaveLength(2);
-
-      clearQueryParams();
     });
   });
 
@@ -463,7 +485,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -474,7 +498,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -485,7 +511,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -507,7 +535,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");
@@ -518,7 +548,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Both match since condition is always true
       expect(results).toHaveLength(2);
@@ -536,16 +568,14 @@ describe("List Operations - Indexing and Slicing", () => {
       graph.addVertex("Person", { name: "Charlie" }); // no items property
     });
 
-    afterEach(() => {
-      clearQueryParams();
-    });
-
     it("should handle null list in index operation", () => {
       const query = `MATCH (n:Person) WHERE n.items[0] IS NULL RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Single return value is returned directly (not wrapped in array)
       expect(results).toContain("Bob");
@@ -557,7 +587,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       // Single return value is returned directly (not wrapped in array)
       expect(results).toContain("Bob");
@@ -565,26 +597,26 @@ describe("List Operations - Indexing and Slicing", () => {
     });
 
     it("should handle null parameter as index", () => {
-      setQueryParams({ idx: null });
+      const context = new QueryContext(graph, { idx: null });
 
       const query = `MATCH (n:Person) WHERE n.items[$idx] IS NULL RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       // All should match since null index returns null
       expect(results).toHaveLength(3);
     });
 
     it("should handle non-numeric index gracefully", () => {
-      setQueryParams({ idx: "not a number" });
+      const context = new QueryContext(graph, { idx: "not a number" });
 
       const query = `MATCH (n:Person) WHERE n.items[$idx] IS NULL RETURN n.name`;
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(traverser.traverse(graph, [undefined], context));
 
       // All should match since NaN index returns null
       expect(results).toHaveLength(3);
@@ -595,7 +627,9 @@ describe("List Operations - Indexing and Slicing", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      const results = Array.from(traverser.traverse(graph, [undefined]));
+      const results = Array.from(
+        traverser.traverse(graph, [undefined], new QueryContext(graph, {})),
+      );
 
       expect(results).toHaveLength(1);
       expect(results[0]).toBe("Alice");

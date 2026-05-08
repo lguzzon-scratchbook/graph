@@ -5,6 +5,7 @@ import { describe, test, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { anyAstToSteps } from "../astToSteps.js";
 import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import type { Query, MultiStatement } from "../AST.js";
@@ -45,14 +46,14 @@ function executeQuery(graph: Graph<typeof schema>, queryString: string): unknown
       const ast = stmt as Query;
       const steps = anyAstToSteps(ast);
       const traverser = createTraverser(steps);
-      results.push(...traverser.traverse(graph, []));
+      results.push(...traverser.traverse(graph, [], new QueryContext(graph, {})));
     }
     return results;
   }
   const ast = parsed as Query;
   const steps = anyAstToSteps(ast);
   const traverser = createTraverser(steps);
-  return Array.from(traverser.traverse(graph, []));
+  return Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 }
 
 describe("DISTINCT in aggregate functions", () => {

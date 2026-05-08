@@ -3,6 +3,7 @@ import { parse } from "../grammar.js";
 import type { Query, Pattern } from "../AST.js";
 import { astToSteps } from "../astToSteps.js";
 import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { Graph } from "../Graph.js";
 import { GraphSchema } from "../GraphSchema.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
@@ -257,7 +258,7 @@ describe("NumericLiterals - Execution", () => {
   test("should filter using hex literal", () => {
     const steps = astToSteps(parse("MATCH (n:Test) WHERE n.value = 0xFF RETURN n.id") as Query);
     const traverser = createTraverser(steps);
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("t1");
   });
@@ -265,7 +266,7 @@ describe("NumericLiterals - Execution", () => {
   test("should filter using octal literal", () => {
     const steps = astToSteps(parse("MATCH (n:Test) WHERE n.value = 0o755 RETURN n.id") as Query);
     const traverser = createTraverser(steps);
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("t2");
   });
@@ -273,7 +274,7 @@ describe("NumericLiterals - Execution", () => {
   test("should filter using scientific notation", () => {
     const steps = astToSteps(parse("MATCH (n:Test) WHERE n.value = 1e6 RETURN n.id") as Query);
     const traverser = createTraverser(steps);
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("t3");
   });
@@ -282,7 +283,7 @@ describe("NumericLiterals - Execution", () => {
     // 0xFE + 1 = 255 (matches t1)
     const steps = astToSteps(parse("MATCH (n:Test) WHERE n.value = 0xFE + 1 RETURN n.id") as Query);
     const traverser = createTraverser(steps);
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("t1");
   });
@@ -291,7 +292,7 @@ describe("NumericLiterals - Execution", () => {
     // Find values greater than 1e5 (100000)
     const steps = astToSteps(parse("MATCH (n:Test) WHERE n.value > 1e5 RETURN n.id") as Query);
     const traverser = createTraverser(steps);
-    const results = Array.from(traverser.traverse(graph, [undefined]));
+    const results = Array.from(traverser.traverse(graph, [undefined], new QueryContext(graph, {})));
     expect(results).toHaveLength(1);
     expect(results[0]).toBe("t3"); // only 1e6 is > 1e5
   });

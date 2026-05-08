@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { createTraverser, CallStep } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { Graph } from "../Graph.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
 import { ProcedureRegistry, procedureRegistry, isBuiltinProcedure } from "../ProcedureRegistry.js";
@@ -248,7 +249,7 @@ describe("CALL procedure support", () => {
         const ast = parse("CALL db.labels() YIELD label RETURN label") as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = Array.from(traverser.traverse(graph, []));
+        const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
         // Should have Person and Company labels
         const labels = results.map((r) => (Array.isArray(r) ? r[0] : r));
@@ -264,7 +265,7 @@ describe("CALL procedure support", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = Array.from(traverser.traverse(graph, []));
+        const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
         const types = results.map((r) => (Array.isArray(r) ? r[0] : r));
         expect(types).toContain("knows");
@@ -277,7 +278,7 @@ describe("CALL procedure support", () => {
         const ast = parse("CALL db.propertyKeys() YIELD propertyKey RETURN propertyKey") as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = Array.from(traverser.traverse(graph, []));
+        const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
         const keys = results.map((r) => (Array.isArray(r) ? r[0] : r));
         expect(keys).toContain("name");
@@ -295,7 +296,7 @@ describe("CALL procedure support", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = Array.from(traverser.traverse(graph, []));
+        const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
         expect(results.length).toBeGreaterThan(0);
         // Results are [name, description] pairs
@@ -311,7 +312,7 @@ describe("CALL procedure support", () => {
         const traverser = createTraverser(steps);
 
         // Should not throw - procedure executes but no results returned (like Cypher)
-        const results = Array.from(traverser.traverse(graph, []));
+        const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
         // Without RETURN clause, no results are yielded (DrainStep consumes them)
         expect(results.length).toBe(0);
       });
@@ -322,7 +323,7 @@ describe("CALL procedure support", () => {
         const ast = parse("CALL db.labels() YIELD label AS nodeLabel RETURN nodeLabel") as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = Array.from(traverser.traverse(graph, []));
+        const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
         // Should have results bound to the alias
         expect(results.length).toBeGreaterThan(0);
@@ -336,7 +337,7 @@ describe("CALL procedure support", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = Array.from(traverser.traverse(graph, []));
+        const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
         // Each person matched should have labels yielded for each
         expect(results.length).toBeGreaterThan(0);
@@ -350,7 +351,7 @@ describe("CALL procedure support", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = Array.from(traverser.traverse(graph, []));
+        const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
         // Should have property info for Person and Company
         expect(results.length).toBeGreaterThan(0);
@@ -367,7 +368,7 @@ describe("CALL procedure support", () => {
         ) as Query;
         const steps = astToSteps(ast);
         const traverser = createTraverser(steps);
-        const results = Array.from(traverser.traverse(graph, []));
+        const results = Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 
         // Should have property info for knows and worksAt
         expect(results.length).toBeGreaterThan(0);

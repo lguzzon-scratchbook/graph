@@ -2,7 +2,7 @@ import { test, expect, describe, beforeEach } from "vitest";
 import { parse } from "../grammar.js";
 import type { Query } from "../AST.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser, QueryContext } from "../Steps.js";
 import { Graph } from "../Graph.js";
 import { GraphSchema } from "../GraphSchema.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
@@ -125,7 +125,6 @@ describe("String Concatenation - Execution", () => {
 
   beforeEach(() => {
     graph = createGraph();
-    clearQueryParams();
 
     graph.addVertex("Person", {
       id: "p1",
@@ -159,7 +158,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // All persons should match since the condition is always true
     expect(results.length).toBe(3);
@@ -171,7 +170,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
@@ -183,7 +182,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
@@ -195,7 +194,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
@@ -207,7 +206,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // All persons should match since fullName = firstName + ' ' + lastName
     expect(results.length).toBe(3);
@@ -219,7 +218,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
@@ -231,7 +230,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Bob has empty prefix, so '' + 'Bob' = 'Bob'
     expect(results.length).toBe(1);
@@ -239,42 +238,42 @@ describe("String Concatenation - Execution", () => {
   });
 
   test("concatenates with parameter", () => {
-    setQueryParams({ suffix: " III" });
+    const context = new QueryContext(graph, { suffix: " III" });
 
     const ast = parse(
       "MATCH (n:Person) WHERE n.firstName + $suffix = 'John III' RETURN n.firstName",
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
   });
 
   test("concatenates number to string (type coercion)", () => {
-    setQueryParams({ num: 42 });
+    const context = new QueryContext(graph, { num: 42 });
 
     const ast = parse(
       "MATCH (n:Person) WHERE n.firstName + $num = 'John42' RETURN n.firstName",
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
   });
 
   test("handles null in concatenation", () => {
-    setQueryParams({ nullVal: null });
+    const context = new QueryContext(graph, { nullVal: null });
 
     const ast = parse(
       "MATCH (n:Person) WHERE n.firstName + $nullVal = 'John' RETURN n.firstName",
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     // null becomes '' in concatenation, so 'John' + '' = 'John'
     expect(results.length).toBe(1);
@@ -287,7 +286,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
@@ -301,7 +300,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
@@ -314,7 +313,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // JohnDoe and JaneSmith are < 'K', BobJones is < 'K' too
     // Actually 'BobJones' < 'JaneSmith' < 'JohnDoe' < 'K'
@@ -328,7 +327,7 @@ describe("String Concatenation - Execution", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
@@ -344,7 +343,6 @@ describe("String Concatenation - Edge Cases", () => {
 
   beforeEach(() => {
     graph = createGraph();
-    clearQueryParams();
   });
 
   test("handles missing property in concatenation", () => {
@@ -363,7 +361,7 @@ describe("String Concatenation - Edge Cases", () => {
     ) as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
     expect(results[0]).toBe("John");
@@ -384,14 +382,12 @@ describe("String Concatenation - Edge Cases", () => {
 
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
   });
 
   test("boolean + string coercion", () => {
-    setQueryParams({ flag: true });
-
     const ast = parse("MATCH (n:Person) WHERE 'Value: ' + $flag = 'Value: true' RETURN n") as Query;
     const graph = createGraph();
     graph.addVertex("Person", {
@@ -403,11 +399,11 @@ describe("String Concatenation - Edge Cases", () => {
       prefix: "",
     });
 
+    const context = new QueryContext(graph, { flag: true });
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     expect(results.length).toBe(1);
-    clearQueryParams();
   });
 });

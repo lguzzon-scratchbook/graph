@@ -1,8 +1,9 @@
-import { test, expect, beforeEach, afterEach, describe } from "vitest";
+import { test, expect, beforeEach, describe } from "vitest";
 import { parse } from "../grammar.js";
 import type { Query } from "../AST.js";
 import { astToSteps } from "../astToSteps.js";
-import { createTraverser, setQueryParams, clearQueryParams } from "../Steps.js";
+import { createTraverser } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import { Graph } from "../Graph.js";
 import { GraphSchema } from "../GraphSchema.js";
 import { InMemoryGraphStorage } from "../GraphStorage.js";
@@ -263,16 +264,12 @@ describe("Arithmetic - Execution", () => {
     graph.addVertex("User", { id: "user4", age: 35, score: 200 });
   });
 
-  afterEach(() => {
-    clearQueryParams();
-  });
-
   test("should evaluate simple addition in WHERE", () => {
     // Find users where age > 10 + 15 (i.e., age > 25)
     const ast = parse("MATCH (n:User) WHERE n.age > 10 + 15 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Should return user2 (30), user4 (35)
     expect(results.length).toBe(2);
@@ -288,7 +285,7 @@ describe("Arithmetic - Execution", () => {
     const ast = parse("MATCH (n:User) WHERE n.score > 20 * 5 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Should return user2 (150), user4 (200)
     expect(results.length).toBe(2);
@@ -302,7 +299,7 @@ describe("Arithmetic - Execution", () => {
     const ast = parse("MATCH (n:User) WHERE n.age > 60 / 2 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Should return user4 (35)
     expect(results.length).toBe(1);
@@ -314,7 +311,7 @@ describe("Arithmetic - Execution", () => {
     const ast = parse("MATCH (n:User) WHERE n.age % 10 = 0 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Should return user2 (30), user3 (20)
     expect(results.length).toBe(2);
@@ -328,7 +325,7 @@ describe("Arithmetic - Execution", () => {
     const ast = parse("MATCH (n:User) WHERE n.score > 10 ^ 2 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Should return user2 (150), user4 (200)
     expect(results.length).toBe(2);
@@ -339,7 +336,7 @@ describe("Arithmetic - Execution", () => {
     const ast = parse("MATCH (n:User) WHERE n.score > 10 + 20 * 5 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Should return user2 (150), user4 (200)
     expect(results.length).toBe(2);
@@ -353,7 +350,7 @@ describe("Arithmetic - Execution", () => {
     const ast = parse("MATCH (n:User) WHERE n.score > (10 + 20) * 5 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // Should return only user4 (200) since score > 150
     expect(results.length).toBe(1);
@@ -370,7 +367,7 @@ describe("Arithmetic - Execution", () => {
     const ast = parse("MATCH (n:Item) WHERE n.price > n.cost * 1.5 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     // item1: 100 > 90 (true), item2: 100 > 120 (false), item3: 200 > 150 (true)
     expect(results.length).toBe(2);
@@ -380,13 +377,12 @@ describe("Arithmetic - Execution", () => {
   });
 
   test("should evaluate arithmetic with parameters", () => {
-    setQueryParams({ minAge: 20 });
-
     // Find users where age > $minAge + 5 (i.e., age > 25)
     const ast = parse("MATCH (n:User) WHERE n.age > $minAge + 5 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const context = new QueryContext(graph, { minAge: 20 });
+    const results = [...traverser.traverse(graph, [undefined], context)];
 
     // Should return user2 (30), user4 (35)
     expect(results.length).toBe(2);
@@ -404,7 +400,7 @@ describe("Arithmetic - Execution", () => {
     const ast = parse("MATCH (n:Account) WHERE n.balance < -25 RETURN n") as Query;
     const steps = astToSteps(ast);
     const traverser = createTraverser(steps);
-    const results = [...traverser.traverse(graph, [undefined])];
+    const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
     expect(results.length).toBe(1);
     expect((results[0] as any)[0]?.get("id")).toBe("acc1");
@@ -422,7 +418,7 @@ test("Arithmetic - Edge Cases - should handle division by zero", () => {
   const ast = parse("MATCH (n:Test) WHERE n.value / 0 = 1 RETURN n") as Query;
   const steps = astToSteps(ast);
   const traverser = createTraverser(steps);
-  const results = [...traverser.traverse(graph, [undefined])];
+  const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
   // Division by zero produces Infinity, so condition should fail
   expect(results.length).toBe(0);
@@ -435,7 +431,7 @@ test("Arithmetic - Edge Cases - should handle NaN comparisons", () => {
   const ast = parse("MATCH (n:Test) WHERE n.value + 5 > 10 RETURN n") as Query;
   const steps = astToSteps(ast);
   const traverser = createTraverser(steps);
-  const results = [...traverser.traverse(graph, [undefined])];
+  const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
   // NaN comparisons should fail
   expect(results.length).toBe(0);
@@ -448,7 +444,7 @@ test("Arithmetic - Edge Cases - should handle missing properties", () => {
   const ast = parse("MATCH (n:Test) WHERE n.value + 5 > 10 RETURN n") as Query;
   const steps = astToSteps(ast);
   const traverser = createTraverser(steps);
-  const results = [...traverser.traverse(graph, [undefined])];
+  const results = [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
 
   // Missing property results in undefined/NaN, should fail
   expect(results.length).toBe(0);

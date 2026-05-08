@@ -6,6 +6,7 @@ import { InMemoryGraphStorage } from "../GraphStorage.js";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { createTraverser, OrderStep } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 import type { Query, SetOperation } from "../AST.js";
 import type { GraphSource } from "../Graph.js";
 import { TraversalPath } from "../Traversals.js";
@@ -60,7 +61,7 @@ function executeQuery(graph: Graph<TestSchema>, query: string): any[] {
   const ast = parse(query) as Query;
   const steps = astToSteps(ast);
   const traverser = createTraverser(steps);
-  return Array.from(traverser.traverse(graph, []));
+  return Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 }
 
 // Helper function to create mock TraversalPath objects for testing

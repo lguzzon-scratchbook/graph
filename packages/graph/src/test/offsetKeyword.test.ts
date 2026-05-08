@@ -2,7 +2,7 @@
  * Tests for OFFSET keyword as a synonym for SKIP
  */
 import { describe, expect, test } from "vitest";
-import { parse, astToSteps, createTraverser, type Query } from "../index.js";
+import { parse, astToSteps, createTraverser, type Query, QueryContext } from "../index.js";
 import { createDemoGraph } from "../getDemoGraph.js";
 
 // Use the demo graph which has Person vertices with name and age properties
@@ -116,7 +116,7 @@ describe("OFFSET keyword (synonym for SKIP)", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      return [...traverser.traverse(graph, [undefined])];
+      return [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     }
 
     test("OFFSET skips first N results", () => {
@@ -181,7 +181,7 @@ describe("OFFSET keyword (synonym for SKIP)", () => {
       const ast = parse(query) as Query;
       const steps = astToSteps(ast);
       const traverser = createTraverser(steps);
-      return [...traverser.traverse(graph, [undefined])];
+      return [...traverser.traverse(graph, [undefined], new QueryContext(graph, {}))];
     }
 
     test("OFFSET in WITH clause", () => {
