@@ -196,3 +196,29 @@ export {
   type QueryUnionStepConfig,
   type MultiQueryStepConfig,
 } from "./setops/index.js";
+
+// ============================================================================
+// Transform Steps (Wave 2 - category modules)
+// ============================================================================
+
+export {
+  MapElementsStep,
+  ValuesStep,
+  PropertyValuesStep,
+  LabelsStep,
+  SelectStep,
+  UnfoldStep,
+  BindPathStep,
+  CallStep,
+  ExpressionReturnStep,
+  type MapElementsStepConfig,
+  type ValuesStepConfig,
+  type PropertyValuesStepConfig,
+  type LabelsStepConfig,
+  type SelectStepConfig,
+  type UnfoldStepConfig,
+  type BindPathStepConfig,
+  type CallStepConfig,
+  type ExpressionReturnStepConfig,
+  type ExpressionReturnItem,
+} from "./transform/index.js";
