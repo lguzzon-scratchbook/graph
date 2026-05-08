@@ -2,66 +2,54 @@
 
 # graph
 
-Monorepo root for @codemix/graph — TypeScript-first in-memory property graph database with Cypher query support, type-safe Gremlin-style traversals, and Yjs CRDT storage. Three workspace packages provide core graph engine (`@codemix/graph`), BM25 text search (`@codemix/text-search`), and collaborative storage (`@codemix/y-graph-storage`).
+@codemix/graph monorepo root. TypeScript-first in-memory property graph database implementing Cypher-compatible query language with PEG parser, type-safe Standard Schema validation, step-based execution pipeline, and Yjs CRDT storage. Three workspace packages provide core graph functionality, BM25 text search, and collaborative storage.
 
 ## Stack
 
-- **Package manager**: pnpm 9+ with workspaces (`packages/*`)
-- **Runtime**: Node.js 20+
-- **Language**: TypeScript (ES2024, NodeNext resolution, strict mode)
-- **Testing**: Vitest with project-based configuration covering all three packages
-- **Linting**: oxlint (grammar.js excluded)
-- **Formatting**: oxfmt (pre-commit hook auto-formats staged files)
-- **Versioning**: Changesets for release management
-- **Build**: esbuild enabled via `allowBuilds` in workspace config
+Package manager: pnpm 9+ with `packages/*` workspace glob. Runtime: Node.js 20+.
+
+Root scripts ([package.json](./package.json)): `_:chk`, `build`, `test`/`test:coverage`, `lint`/`lint:fix` (oxlint), `format`/`format:check` (oxfmt), `typecheck`, `changeset`/`version-packages`/`release`, `setup:hooks`.
+
+DevDeps: `@changesets/cli`, `vitest` ^4.1.5, `@vitest/coverage-istanbul` ^4.1.5, `@vitest/coverage-v8`, `oxlint`, `oxfmt`, `typescript` ^6.0.3.
+
+Workspace config ([pnpm-workspace.yaml](./pnpm-workspace.yaml)): `allowBuilds: { esbuild: true }`, `catalog:` version pinning for shared dependencies.
+
+Test config ([vitest.config.ts](./vitest.config.ts)): `test.projects: ["packages/graph", "packages/text-search", "packages/y-graph-storage"]`.
 
 ## Contents
 
-- [package.json](./package.json) — Root manifest defining workspace scripts (`build`, `test`, `changeset`, `version-packages`, `release`, `lint`, `format`, `typecheck`, `setup:hooks`) and dev dependencies (`@changesets/cli`, `vitest`, `oxlint`, `oxfmt`, `typescript`).
-- [pnpm-workspace.yaml](./pnpm-workspace.yaml) — Workspace definition with `packages/*` glob, `allowBuilds: esbuild: true`, and shared dependency catalog (`catalog:` protocol).
-- [vitest.config.ts](./vitest.config.ts) — Monorepo test configuration with `test.projects` targeting `packages/graph`, `packages/text-search`, and `packages/y-graph-storage`.
-- [oxlint.json](./oxlint.json) — Oxlint configuration with empty rules object and schema reference to oxc-project.
-- [README.md](./README.md) — Project documentation covering `Graph`, `GraphTraversal`, `AsyncGraph` APIs, Cypher features, and schema/index system.
-- [.oxfmtrc.json](./.oxfmtrc.json) — Oxfmt formatter configuration.
+[README.md](./README.md) — Exports documentation for `Graph`, `GraphTraversal`, `AsyncGraph`, `parseQueryToSteps`, `functionRegistry`, `procedureRegistry`; Cypher clauses (`MATCH`, `CREATE`, `MERGE`, `CALL`, `WITH`, `UNWIND`); schema validators (Zod, Valibot); index types (`hash`, `btree`, `fulltext`); temporal types; development workflow.
+
+[package.json](./package.json) — Workspace root manifest with scripts (`_:chk`, `build`, `test`, `lint`, `format`, `typecheck`, `changeset`, `version-packages`, `release`, `setup:hooks`), vitest testing, oxlint linting, oxfmt formatting, and changeset versioning.
+
+[pnpm-workspace.yaml](./pnpm-workspace.yaml) — Workspace definition with `packages/*` glob, `allowBuilds: { esbuild: true }`, and `catalog:` shared dependency versions.
+
+[vitest.config.ts](./vitest.config.ts) — Vitest monorepo configuration with `test.projects` array (`packages/graph`, `packages/text-search`, `packages/y-graph-storage`) and `coverage` settings.
+
+[oxlint.json](./oxlint.json) — Oxlint configuration with `$schema` from oxc-project and empty `rules` object.
 
 ## Subdirectories
 
-- [packages/](./packages/) — Workspace packages. See [packages/AGENTS.md](./packages/AGENTS.md) for detailed architecture of `graph` (Cypher engine), `text-search` (BM25/tokenization), and `y-graph-storage` (Yjs persistence).
-- [.changeset/](./.changeset/) — Changeset configuration and documentation for versioning workflow.
-- [.githooks/](./.githooks/) — Git hooks including `pre-commit` script that runs `oxfmt` on staged files.
-- [.vscode/](./.vscode/) — Editor settings.
-- [scripts/](./scripts/) — Setup utilities including `setup-git-hooks.sh`.
+[packages/](./packages/) — Workspace packages root containing `tsconfig-common.json` (shared TypeScript config extending ES2024, NodeNext, strict mode). Three domain-specific packages: `graph/` exports `Graph`, `GraphTraversal`, `AsyncGraph` with Cypher parser and Standard Schema validation; `text-search/` exports `createMatcher`, `rankDocuments` for BM25 indexing; `y-graph-storage/` exports `YGraphStorage`, `ZodYTypes` for Yjs CRDT persistence.
+
+[.changeset/](./.changeset/) — Changeset versioning and changelog management.
+
+[.githooks/](./.githooks/) — Git hooks directory containing `pre-commit` script running `oxfmt` on staged files with automatic restaging.
+
+[.vscode/](./.vscode/) — VS Code editor settings.
+
+[scripts/](./scripts/) — `setup-git-hooks.sh` for manual Git hooks installation.
 
 ## Workflow & Conventions
 
-- **Git hooks**: `pnpm install` auto-configures hooks from `.githooks/`. Manual re-run: `pnpm run setup:hooks`.
-- **Pre-commit**: Automatically runs `oxfmt` on staged source files and restages changes.
-- **Testing**: `pnpm test` runs Vitest in watch mode; `pnpm test:coverage` generates coverage reports via Istanbul and v8 providers.
-- **Linting**: `pnpm lint` (oxlint, ignores `**/grammar.js`), `pnpm lint:fix` for auto-fixes.
-- **Formatting**: `pnpm format` (oxfmt), `pnpm format:check` for CI verification.
-- **Type checking**: `pnpm typecheck` runs TypeScript compiler across workspace.
-- **Build**: `pnpm build` compiles all packages.
-- **Release workflow**: `pnpm changeset` to add changesets, `pnpm version-packages` to bump versions, `pnpm release` to publish.
-- **Package filtering**: Use `pnpm --filter @codemix/graph <command>` to target specific packages.
+Git hooks: `pnpm install` auto-configures via `prepare` script; manual re-run via `pnpm run setup:hooks`. Pre-commit hook runs `oxfmt` on staged source files and restages automatically.
 
-## Configuration
+Package filtering: `pnpm --filter @codemix/graph <command>` executes in specific workspaces.
 
-**pnpm-workspace.yaml** defines:
+Lint exclusions: `**/grammar.js` ignored (generated parser file).
 
-- Workspace pattern: `packages/*`
-- Build config: `allowBuilds: { esbuild: true }`
-- Catalog dependencies with pinned versions: `@types/node` ^25.5.0, `@vitest/coverage-istanbul` ^4.1.5, `typescript` ^6.0.3, `vite` ^8.0.0, `vitest` ^4.1.5, `yjs` ^13.6.29, `zen-observable-ts` ^1.2.5, `zod` 4.3.6
-
-**vitest.config.ts** defines:
-
-- Test projects: `["packages/graph", "packages/text-search", "packages/y-graph-storage"]`
-- Empty coverage configuration object
-
-**oxlint.json** defines:
-
-- `$schema`: `https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json`
-- `rules`: `{}`
+Version pinning: `catalog:` protocol in `pnpm-workspace.yaml` locks shared dependency versions across workspace.
 
 ## Reproduction-Critical Constants
 
-Workspace dependency catalog and build flags: [pnpm-workspace.annex.sum](./pnpm-workspace.annex.sum)
+Workspace configuration values: [pnpm-workspace.annex.sum](./pnpm-workspace.annex.sum)

@@ -2,22 +2,16 @@
 
 # packages
 
-Monorepo workspace containing three TypeScript packages: `graph` (Cypher-compatible property graph database), `text-search` (BM25/tokenization utilities), and `y-graph-storage` (Yjs CRDT persistence layer). Shared TypeScript configuration enforces ES2024, NodeNext, strict mode, and composite project references enabling cross-package dependencies.
+Monorepo workspace packages root containing shared TypeScript configuration and domain-specific packages forming the codemix graph platform. Houses three workspace dependencies: the core property graph database with Cypher support, full-text search utilities for BM25 indexing, and Yjs-based collaborative storage adapters.
 
 ## Contents
 
-- [tsconfig-common.json](./tsconfig-common.json) — Workspace-wide TypeScript configuration. Targets ES2024, NodeNext module resolution, strict mode with `noUncheckedIndexedAccess`, declaration maps, source maps. Extended by all package-level tsconfig.json files.
+[tsconfig-common.json](./tsconfig-common.json) — Shared TypeScript configuration extending ES2024, NodeNext module resolution, strict mode with `noUncheckedIndexedAccess`, declaration emit, and source maps. Referenced by all workspace packages via `extends`.
 
 ## Subdirectories
 
-- [graph/](./graph/) — In-memory property graph database with Peggy-generated Cypher parser, Gremlin-style traversals, pluggable storage (InMemoryGraphStorage, AsyncGraph), and hash/btree/fulltext indexing. Consumes `@codemix/text-search` for BM25 ranking. See [graph/AGENTS.md](./graph/AGENTS.md) for architecture details.
-- [text-search/](./text-search/) — Full-text search primitives: `tokenizer.ts` (word boundary segmentation), `stemmer.ts` (Porter stemmer), `matcher.ts` (BM25 scoring). Entry point `index.ts` exports these for `@codemix/graph` FullTextIndex consumption.
-- [y-graph-storage/](./y-graph-storage/) — Yjs-based CRDT storage backend. `YGraphStorage.ts` implements graph persistence over Y.Doc, `LazyPropertyDictionary.ts` handles sparse property encoding, `ZodYTypes.ts` validates Yjs data structures. Entry `index.ts` exports YGraphStorage adapter.
+[graph/](./graph/) — TypeScript-first in-memory property graph database implementing Cypher-compatible query language with PEG parser, type-safe Standard Schema validation, and step-based execution pipeline. Exports `@codemix/graph` with runtime, parser, schema validation, and Gremlin-style fluent traversal APIs.
 
-## Workspace Structure
+[text-search/](./text-search/) — BM25 full-text search engine with tokenization, stemming, and matching utilities. Exports `tokenizer.ts` (lexical analysis), `stemmer.ts` (Porter stemming), `matcher.ts` (BM25 scoring). Dependency of `graph` package for `FullTextIndex` implementation.
 
-pnpm workspace defined at `../pnpm-workspace.yaml`. Package manifests declare `"@codemix/text-search": "workspace:^"` and `"@codemix/y-graph-storage": "workspace:^"` dependencies. `tsconfig-common.json` reference paths resolve via `../tsconfig-common.json` from package subdirectories.
-
-## Cross-Package API Surface
-
-`graph` FullTextIndex instantiates `createBM25Matcher` from `text-search`. `y-graph-storage` exports `YGraphStorage` class implementing GraphStorage interface consumed by `graph` consumers needing collaborative/undo-redo capabilities.
+[y-graph-storage/](./y-graph-storage/) — Yjs-based collaborative storage adapter providing conflict-free replicated data type (CRDT) persistence for graphs. Exports `YGraphStorage.ts` (storage adapter), `YGraph.ts` (Yjs document wrapper), `LazyPropertyDictionary.ts` (sparse property encoding), `ZodYTypes.ts` (schema validation bindings).

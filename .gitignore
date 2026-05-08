@@ -54,3 +54,8 @@ next-env.d.ts
 
 # AgentOps session artifacts
 /.agents/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

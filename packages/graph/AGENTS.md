@@ -2,94 +2,150 @@
 
 # packages/graph
 
-TypeScript-first in-memory property graph database implementing Cypher-compatible queries via Peggy-generated parser and Gremlin-style type-safe traversals, supporting pluggable storage backends (InMemoryGraphStorage, AsyncGraph transport) with Standard Schema v1 property validation and hash/btree/fulltext indexing.
-
-## Contents
-
-- [CHANGELOG.md](./CHANGELOG.md) — Documents API evolution across versions 0.0.2–0.3.0, tracking additions to TraversalPath (nodes, relationships, length, sum methods) and ValueTraversal (dedup, skip, limit, range, count, property, properties methods).
-- [README.md](./README.md) — Public API documentation defining Graph<Schema> constructor with crypto.randomUUID default ID generation, Cypher query interface (parseQueryToSteps, parse, astToSteps), Gremlin Traversal API, indexing configuration, async transport, and error hierarchy.
-- [package.json](./package.json) — ESM module manifest exporting dist/index.js with build:grammar script compiling grammar.peggy via Peggy 5.1.0 return-types plugin, workspace dependencies @codemix/text-search and @standard-schema/spec.
-- [tsconfig.json](./tsconfig.json) — TypeScript configuration extending ../tsconfig-common.json, emitting to ./dist with composite project references to ../text-search.
-- [vitest.config.ts](./vitest.config.ts) — Vitest configuration with testTimeout 20000, istanbul coverage provider excluding src/grammar.js and \*_/_.test.ts from instrumentation.
-
-## Subdirectories
-
-- [scripts/](./scripts/) — Build utilities containing tck-audit.ts for TCK coverage analysis and compliance reporting.
-- [src/](./src/) — Core implementation: Peggy parser (grammar.peggy, grammar.js, grammar.d.ts), AST types (AST.ts), query execution engine (Steps.ts, astToSteps.ts, QueryContext.ts), graph runtime (Graph.ts, GraphStorage.ts, GraphSchema.ts, AsyncGraph.ts), traversal API (Traversals.ts), function/procedure registries (FunctionRegistry.ts, ProcedureRegistry.ts), temporal types (TemporalTypes.ts), utilities (Comparator.ts, Exceptions.ts, generateSchemaGuide.ts, getDemoGraph.ts), barrel export (index.ts).
-- [src/indexes/](./src/indexes/) — Pluggable indexing system: HashIndex.ts (O(1) equality), BTreeIndex.ts (O(log n) range), FullTextIndex.ts (BM25 via @codemix/text-search), IndexManager.ts coordinating unique constraints, QueryPlanner.ts for index hint selection.
-- [src/test/](./src/test/) — Comprehensive Vitest suite (87+ files): grammar parsing, AST-to-step compilation, traversal execution, storage tests, plus TCK compliance tests in tck/clauses/, tck/expressions/, tck/useCases/ covering 221 OpenCypher test cases.
-
-## Architecture / Data Flow
-
-```
-grammar.js:parse() → AST (Query | UnionQuery | MultiStatement)
-    ↓
-astToSteps.ts:anyAstToSteps() → Step[] (FetchVerticesStep, FilterElementsStep, etc.)
-    ↓
-Steps.ts:createTraverser(steps) → Traverser
-    ↓
-Traverser.traverse(graph, [], QueryContext) → Iterable<TraversalPath>
-    ↓
-TraversalPath.toJSON() / materialization → Results
-```
-
-FilterElementsStep utilizes IndexManager (hash/btree/fulltext) for query optimization before iteration. RepeatStep handles variable-length paths with cycle detection via seen: Set<ElementId>. AsyncGraph proxies execution over JSON-serializable transports via handleAsyncCommand dispatcher.
+TypeScript-first in-memory property graph database implementing Cypher-compatible query language with PEG parser, type-safe Standard Schema validation, and step-based execution pipeline. Core package of codemix product intelligence platform providing both declarative Cypher queries and fluent Gremlin traversals.
 
 ## Stack
 
-- **Parser**: Peggy 5.1.0 (grammar.peggy → grammar.js with return-types plugin)
-- **Schema Validation**: Standard Schema v1 (@standard-schema/spec)
-- **Text Search**: BM25 ranking via @codemix/text-search workspace dependency
-- **Testing**: Vitest with istanbul coverage provider
-- **Build**: TypeScript 5.x composite projects, Node.js 18+, ESM output
+**Module**: ESM package `@codemix/graph` exporting `dist/index.js`.
+
+**Scripts**: `build` runs `build:grammar` (peggy compilation) then `tsc`. `test` runs vitest with 20s timeout.
+
+**Dependencies**: `@codemix/text-search` (workspace, BM25 fulltext), `@standard-schema/spec` (runtime validation), `peggy` (parser generator). `vitest` for testing, `typescript` for compilation.
+
+**Entry**: `src/index.ts` re-exports parser, runtime, schema, and traversal APIs.
+
+## Contents
+
+### Configuration & Metadata
+
+[package.json](./package.json) — ESM manifest with peggy grammar build script. References `scripts.build:grammar` annex for peggy command with return-types.
+[tsconfig.json](./tsconfig.json) — Extends `../tsconfig-common.json`, `outDir: "./dist"`, `rootDir: "src"`, references `../text-search`.
+[vitest.config.ts](./vitest.config.ts) — Test timeout 20s, istanbul coverage, excludes `src/grammar.js` and `**/*.test.ts`. **Annex:** [package.annex.sum](./package.annex.sum).
+[CHANGELOG.md](./CHANGELOG.md) — API evolution: 0.3.0 adds `TraversalPath.nodes()`, `relationships()`, `length()`, `sum()` and `ORDER BY` alias references; 0.2.0 adds `dedup()`, `skip()`, `limit()`, `range()`, `count()`, `property()`, `properties()` to traversals; 0.1.0 adds path analysis methods; 0.0.2 initial metadata.
+[README.md](./README.md) — Usage docs for Cypher interface and Gremlin API.
+
+### Core Runtime
+
+[Graph.ts](./src/Graph.ts) — `Graph<Schema>` class with WeakMap identity mapping (`#vertexIdentities`, `#edgeIdentities`), methods `addVertex`, `addEdge`, `updateProperty`, `deleteVertex`, `deleteEdge`. Exports `Element`, `Vertex`, `Edge` classes, `UniqueConstraintViolationError`.
+[GraphStorage.ts](./src/GraphStorage.ts) — `GraphStorage` interface, `ElementId<TLabel>` template literal type `` `${TLabel}:${string}` ``, `InMemoryGraphStorage` with bidirectional edge indexing.
+[AsyncGraph.ts](./src/AsyncGraph.ts) — `AsyncGraph<TSchema>` with transport serialization via `jsonClone`, streaming through `config.transport`. Exports `AsyncQuery`, `AsyncTransaction` commands with `@type` discrimination.
+[QueryContext.ts](./src/QueryContext.ts) — Immutable context with `#params`, `#graph`, `#options`. Safety limits: `maxIterations: 1000` default, `maxCollectionSize: 100000` default.
+[Steps.ts](./src/Steps.ts) — Step hierarchy: `Step<TConfig>` base, `ContainerStep`, 30+ concrete steps (`FetchVerticesStep`, `FilterElementsStep`, `CreateStep`, `ShortestPathStep`, etc.). Condition evaluation via `evaluateCondition()` supporting `["and"|"or"|"xor"|"not"]`, `["=", property, value]`, `["in", property, values]`, `["=~", property, regex]`.
+[Traversals.ts](./src/Traversals.ts) — Gremlin fluent API with compile-time path typing. `TraversalPath<TParent, TValue, TLabels>` immutable linked list with `with()`, `get()`, `property()`, `nodes()`, `relationships()`, `length()`, `sum()`. `GraphTraversal` entry with `V()`, `E()`, `union()`, `intersect()`. `VertexTraversal` with `out()`, `in()`, `both()`, `has()`, `repeat()`. `EdgeTraversal` with `inV()`, `outV()`.
+
+### Schema & Type System
+
+[GraphSchema.ts](./src/GraphSchema.ts) — `GraphSchema`, `VertexSchema`, `EdgeSchema` with `StandardSchemaV1` property validation. `IndexConfig` types: `hash` (O(1)), `btree` (O(log n)), `fulltext` (BM25). Inference utilities: `VertexLabel`, `EdgeLabel`, `PropertiesFromSchema`.
+[TemporalTypes.ts](./src/TemporalTypes.ts) — Cypher temporal classes: `DateValue`, `LocalTimeValue`, `TimeValue`, `LocalDateTimeValue`, `DateTimeValue`, `DurationValue`. ISO 8601 parsing: date `/^(\d{4})-(\d{2})-(\d{2})$/`, time `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/`. Duration format `P[n]Y[n]M[n]DT[n]H[n]M[n]S`.
+[AST.ts](./src/AST.ts) — Discriminated union AST nodes: `Query`, `MatchClause`, `Pattern`, `NodePattern`, `EdgePattern`, `CreateClause`, `SetClause`, `DeleteClause`, `PropertyCondition`, `ArithmeticExpression`, `FunctionCall`, `ListComprehension`, `ExistsSubquery`. All nodes tagged by `type` field.
+
+### Query Parsing & Transformation
+
+[grammar.peggy](./src/grammar.peggy) — PEG grammar for Cypher: node patterns `(n:Label)`, edge patterns `-[r:REL]->`, variable-length `*min..max`, 50+ case-insensitive keywords.
+[grammar.js](./src/grammar.js) — Peggy 5.1.0 generated parser. Exports `parse(input, options)`, `SyntaxError` with `format(sources)`, `StartRules: ["MultiStatement"]`.
+[grammar.d.ts](./src/grammar.d.ts) — Type declarations for `Location`, `SyntaxError`, `ParserTracer`. `parse()` returns `Query | UnionQuery | MultiStatement`.
+[astToSteps.ts](./src/astToSteps.ts) — `astToSteps(query)`, `anyAstToSteps(ast)`, `unionAstToSteps(unionQuery)`, `multiStatementToSteps(multiStatement)`. Converts patterns via `convertPattern()`, `convertMultiPattern()`, `convertShortestPathPattern()`, `convertQuantifiedEdge()`. Mutation conversion: `convertCreateClause()`, `convertMergeClause()`, `convertSetClause()`, `convertDeleteClause()`, `convertRemoveClause()`.
+[Comparator.ts](./src/Comparator.ts) — `compare()` with type precedence `undefined(0) < null(1) < boolean(2) < number(3) < string(4) < object(5)`. `isNumericConvertible()` for finite numbers, numeric strings, booleans.
+
+### Registry Systems
+
+[FunctionRegistry.ts](./src/FunctionRegistry.ts) — `FunctionRegistry` with case-insensitive lookup (`name.toLowerCase()`). 70+ built-ins: `type()`, `labels()`, `id()`, `properties()`, `toLower`, `substring`, `abs`, `ceil`, `rand`, `head`, `tail`, `range`, `date`, `datetime`, `duration`, `count`, `sum`, `avg`, `min`, `max`, `collect`, `length`, `nodes`, `relationships`. Aggregate stubs throw when invoked in scalar context.
+[ProcedureRegistry.ts](./src/ProcedureRegistry.ts) — `ProcedureRegistry` with `register()`, `get()`, `invoke()`. Schema procedures: `db.labels()`, `db.relationshipTypes()`, `db.propertyKeys()`, `db.schema.nodeTypeProperties()`, `db.schema.relTypeProperties()`, `db.index.fulltext.queryNodes`. Namespaced names like `db.labels` supported.
+
+### Supporting Infrastructure
+
+[Exceptions.ts](./src/Exceptions.ts) — Error hierarchy extending `GraphError`: `ElementNotFoundError`, `VertexNotFoundError`, `EdgeNotFoundError`, `LabelNotFoundError`, `InvalidComparisonError`, `MaxIterationsExceededError(limit, step)`, `MemoryLimitExceededError(limit, actual)`, `PropertyValidationError`, `PropertyTypeError(key, label, value, issues)`, `UniqueConstraintViolationError(label, property, value, existingElementId)`, `AsyncValidationError`, `ReadonlyGraphError(stepName)`, `GraphConsistencyError`.
+[generateSchemaGuide.ts](./src/generateSchemaGuide.ts) — LLM prompt generators. `generateGrammarDescription()` returns ~350 line Cypher grammar. `generateSchemaGuide<TSchema>(schema)` injects vertex/edge labels. `generateCompactSchemaGuide<TSchema>()` for token-constrained contexts.
+[getDemoGraph.ts](./src/getDemoGraph.ts) — Test fixtures. `DemoSchema` with `Person` (name, age), `Thing` (name, ref), edges `knows`/`likes`. `createDemoGraph()` returns `Graph<DemoSchema>` with 14 vertices and connected edge network.
+[index.ts](./src/index.ts) — Main barrel export re-exporting `parseQueryToSteps(queryString, options?)` with `ParseQueryToStepsOptions.readonly?: boolean`, AST transforms, `Step`, `Graph`, traversal APIs. Exports `MUTATION_STEP_NAMES` Set (`"Create"`, `"Set"`, `"Delete"`, `"Remove"`, `"Merge"`, `"Foreach"`); `validateNoMutations(steps)` recurses `ContainerStep.steps` throwing `ReadonlyGraphError(step.name)` on mutations. Postprocessing: aliases override variables; bare expressions use `expr_${index}`; mixed property/value returns use `_value`; multi-statement queries tag `_statementIndex`; union queries inherit first RETURN; aggregate-only queries wrap rows to `[row]`.
+
+## Subdirectories
+
+[src/steps/](./src/steps/) — Modular step implementations organized into 8 categories: `fetch/` (`FetchVerticesStep`, `FetchEdgesStep`, `CartesianFetchStep`), `traversal/` (`VertexStep`, `EdgeStep`, `RepeatStep`, `ShortestPathStep`), `filter/` (`FilterElementsStep`, `FilterPredicateStep`, `DedupStep`), `transform/` (`MapElementsStep`, `ValuesStep`, `SelectStep`, `BindPathStep`, `CallStep`), `aggregate/` (`CountStep`, `SumStep`, `AvgStep`, `MinStep`, `MaxStep`, `CollectStep`, `GroupByStep`), `mutation/` (`CreateStep`, `SetStep`, `DeleteStep`, `RemoveStep`, `MergeStep`), `control/` (`RangeStep`, `OrderStep`, `OptionalMatchStep`, `WithStep`, `UnwindStep`, `ForeachStep`), `setops/` (`UnionStep`, `IntersectStep`, `QueryUnionStep`, `MultiQueryStep`). Exports `StepRegistry`, `stepRegistry` singleton, `createStepFromJSON()`.
+
+[src/indexes/](./src/indexes/) — Index implementations: `HashIndex` (O(1) equality, unique constraints), `BTreeIndex` (O(log n) range), `FullTextIndex` (BM25 via `@codemix/text-search`, stemming options). `IndexManager` coordinates unique constraints and lazy building. `QueryPlanner` selects indexes. Exports type definitions.
+
+[src/test/](./src/test/) — Comprehensive test suite including unit tests for all modules and TCK (Technology Compatibility Kit) tests in `tck/` subdirectory covering Cypher specification compliance.
+
+## Architecture
+
+**Parser Pipeline:** `grammar.peggy` defines PEG rules → `grammar.js` (Peggy 5.1.0 generated) parses input → `AST.ts` discriminated unions represent syntax tree.
+
+**Query Execution Pipeline:** `astToSteps.ts` transforms AST → `Step<any>[]` pipeline → `createTraverser(steps).traverse(graph, input, context)` executes via `Traverser` chaining `Step.traverse()` methods → `TraversalPath` immutable linked list tracks bindings.
+
+**Data Flow:** `GraphTraversal` fluent API builds step chains → `parseQueryToSteps()` converts Cypher strings → `Graph` runtime executes against `GraphStorage` → `IndexManager` optimizes lookups via `HashIndex`/`BTreeIndex`/`FullTextIndex`.
+
+**Async Layer:** `AsyncGraph` serializes steps to JSON → transport function → remote execution via `handleAsyncCommand` → deserialization via `instantiateResult`.
+
+## Patterns
+
+**Discriminated Unions:** AST nodes use `type` field tagging. Transport types use `@type`. Storage elements use `"@type": "Vertex"` vs `"Edge"`.
+
+**Registry Pattern:** `FunctionRegistry`, `ProcedureRegistry`, `StepRegistry` use `Map<string, Definition>` with lowercase keys for case-insensitive lookup.
+
+**Identity Mapping:** `Graph` uses `WeakMap<StoredVertex, Vertex>` and `WeakMap<StoredEdge, Edge>` for object stability across traversals.
+
+**Immutable Path Construction:** `TraversalPath.with(value, labels)` returns new instance; no mutation enables branch-free history tracking.
+
+**Step Pipeline:** All operations modeled as `Step<TConfig>` with `traverse(source, input, context): IterableIterator<unknown>`. `ContainerStep` holds nested `Step<any>[]` for compound operations.
+
+**JSON Serialization:** Steps serialize to `[name, config, steps?]` tuples. `createStepsFromJSON` deserializes via `KnownSteps` registry.
 
 ## API Surface
 
-index.ts exports parseQueryToSteps(queryString, options?) returning { steps, postprocess } with readonly safety enforced via MUTATION_STEP_NAMES Set containing "Create", "Set", "Delete", "Remove", "Merge", "Foreach". GraphTraversal class provides fluent entry points V(id?), E(id?), out(label?), in(label?), both(), has(key, value|fn), order().by(key, "asc"|"desc"), limit(n), union(...traversals). FunctionRegistry.register({ name, category, impl }) extends scalar/aggregate/list/temporal functions. ProcedureRegistry.register({ name, params, yields, impl }) adds schema introspection procedures (db.labels, db.relationshipTypes, dbms.procedures).
+**Main Entry:** `index.ts` exports `parseQueryToSteps(query, { readonly?: boolean })` returning `{ steps, postprocess }`; `parse`, `astToSteps`, `anyAstToSteps`, `unionAstToSteps`, `multiStatementToSteps`; `Graph` class; `AsyncGraph` class; `GraphSchema` types; `Traversal` classes.
+
+**Cypher Interface:** `parseQueryToSteps` supports `MATCH`, `OPTIONAL MATCH`, `WHERE` (operators: `IS NULL`, `IN`, `STARTS WITH`, `ENDS WITH`, `CONTAINS`, `=~` regex), `RETURN`, `ORDER BY`, `SKIP`, `LIMIT`, `CREATE`, `MERGE`, `SET`, `DELETE`, `DETACH DELETE`, `REMOVE`, `UNWIND`, `WITH`, `CALL ... YIELD`, `FOREACH`, `UNION`, `UNION ALL`. Pattern quantifiers: `*`, `+`, `{n,m}`.
+
+**Gremlin Interface:** `GraphTraversal` provides `V(id?)`, `E(id?)`, `out(label?)`, `in(label?)`, `both()`, `outE()`, `inE()`, `bothE()`, `hasLabel()`, `has(key, value|fn)`, `where(fn)`, `as(label)`, `select()`, `order()`, `skip()`, `limit()`, `count()`, `values()`, `dedup()`, `repeat(fn)`, `times(n)`, `emit()`, `shortestPath()`, `union()`, `intersect()`.
 
 ## Behavioral Contracts
 
-**Element ID Format**: `Label:uuid` produced by Graph.generateElementId() via `${label}:${uuid}` template, parsed by GraphStorage.parseElementId() splitting on first colon only (handles "Label:uuid:extra" → ["Label", "uuid"]).
+**ElementId Format:** Template literal `` `${TLabel}:${string}` ``. Parsing via `parseElementId()` splits on first `:`; `getLabelFromElementId()` iterates chars seeking colon. Error: `` `Invalid element id: ${id}` ``.
 
-**Regex Patterns** (from grammar.peggy/grammar.js):
+**Grammar Regex Patterns (grammar.js):**
 
-- Identifier start: `/^[a-zA-Z_]/`
-- Identifier part: `/^[a-zA-Z0-9_]/`
-- Hex integer: `0[xX][0-9a-fA-F]+`
-- Octal integer: `0[oO][0-7]+`
-- Scientific float: `sign? [0-9]+ "." [0-9]+ [eE] [+-]? [0-9]+`
-- Backtick content: `/^[^`]/` (escape via double backtick)
-- String double-quote forbidden: `/^["\\\n\r]/`
-- String single-quote forbidden: `/^['\\\n\r]/`
+- Identifier start: `/^[a-zA-Z_]/` (`peg$r0`)
+- Identifier part: `/^[a-zA-Z0-9_]/` (`peg$r1`)
+- Hex integer: `0x[0-9a-fA-F]+`
+- Octal integer: `0o[0-7]+`
+- Scientific: `[0-9]+(\.[0-9]+)?[eE][+-]?[0-9]+`
+- String escapes: `\n`, `\r`, `\t`, `\\`, `\"`, `\'`
 
-**Path Quantifiers**: `*` (0..inf), `+` (1..inf), `*n` (exact n), `*n..m` (range n..m), `*..m` (0..m), `*n..` (n..inf), `{n,m}`, `{n,}`, `{,m}`, `{n}`.
+**Case-Insensitivity:** Keywords parsed via `"WORD"i !IdentifierPart` (negative lookahead `[a-zA-Z0-9_]`). Function/procedure names stored and looked up via `.toLowerCase()`.
 
-**Comparison Operators**: `=`, `!=`, `<>`, `<`, `<=`, `>`, `>=`, `=~` (regex match), `+=` (property merge).
+**Temporal Parsing:**
 
-**Null Ordering**: PostgreSQL-style defaults: ASC → NULLS LAST, DESC → NULLS FIRST.
+- Date regex: `/^(\d{4})-(\d{2})-(\d{2})$/` — error: `Invalid date string: ${val}. Expected format: YYYY-MM-DD`
+- LocalTime regex: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/` — error: `Invalid localtime string: ${val}. Expected format: HH:MM:SS or HH:MM:SS.nnnnnnnnn`
+- Time offset regex: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/` — error: `Invalid time string: ${val}. Expected format: HH:MM:SS+HH:MM, HH:MM:SS-HH:MM, or HH:MM:SSZ`
+- Duration ISO 8601: `P[n]Y[n]M[n]DT[n]H[n]M[n]S` — error: `Invalid duration string: ${val}. Expected ISO 8601 format: P[n]Y[n]M[n]DT[n]H[n]M[n]S (e.g., P1Y2M3D, PT1H30M, P1DT12H)`
 
-**Safety Limits**: DEFAULT_MAX_REPEATS = 1000, DEFAULT_MAX_COLLECTION_SIZE = 100000, DEFAULT_MAX_GROUPS = 100000. Exceeding throws MaxIterationsExceededError (message: `` `Maximum iterations (${limit}) exceeded in ${step}. Consider adding a LIMIT clause or increasing maxIterations.` ``) or MemoryLimitExceededError (message: `` `Collection size (${actual}) exceeds limit (${limit)}.` ``).
+**Readonly Query Validation:** `MUTATION_STEP_NAMES` Set contains `"Create"`, `"Set"`, `"Delete"`, `"Remove"`, `"Merge"`, `"Foreach"`. `validateNoMutations(steps)` throws `ReadonlyGraphError(step.name)` if mutation step found, recurses `ContainerStep.steps`.
 
-**Error Message Templates** (verbatim):
+**Postprocessing Rules:** Aliases override variable names; expressions without aliases use `expr_${index}`; mixed property/value returns use `_value`; multi-statement queries pass through with `_statementIndex`; union queries use first query's RETURN clause; aggregate-only queries normalize non-array rows to `[row]`.
 
-- `ORDER BY, SKIP, and LIMIT require a RETURN clause`
-- `allShortestPaths() is not yet implemented. Use shortestPath() to find a single shortest path.`
-- `Comma-separated MATCH patterns only support simple node patterns. Pattern ${i + 1} contains edges which is not supported.`
-- `REMOVE: Label removal is not supported. Labels are immutable. Cannot remove label '${item.label}' from '${item.variable}'.`
-- `Cannot use aggregate (${aggregateItem.aggregate}) with ${mixedWith} in RETURN clause without GROUP BY`
-- `Property '${key}' on label '${label}' failed validation: ${issues.join("; ")}`
-- `Unique constraint violation: property '${property}' on label '${label}' already has value ${JSON.stringify(value)} (existing element: ${existingElementId})`
-- `Query contains mutation step '${stepName}' but readonly mode is enabled`
+**Parse Options:** `ParseQueryToStepsOptions` interface with `readonly?: boolean` field.
 
-**Temporal ISO Regex Patterns**:
+**Error Messages (Exceptions.ts):**
 
-- Date: `/^(\d{4})-(\d{2})-(\d{2})$/`
-- LocalTime: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/`
-- Time: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/`
-- DateTime: `/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))?(?:\[([^\]]+)\])?$/`
-- Duration parsing: components extracted via `/(-?\d+(?:\.\d+)?)(Y|M|W|D)/g` and `/(-?\d+(?:\.\d+)?)(H|M|S)/g`
+- `VertexNotFoundError`: `` `Vertex ${id} not found` ``
+- `EdgeNotFoundError`: `` `Edge ${id} not found` ``
+- `MaxIterationsExceededError`: `` `Maximum iterations (${limit}) exceeded in ${step}. Consider adding a LIMIT clause or increasing maxIterations.` ``
+- `MemoryLimitExceededError`: `` `Collection size (${actual}) exceeds limit (${limit}). Consider adding a LIMIT clause or increasing maxCollectionSize.` ``
+- `PropertyTypeError`: `` `Property '${key}' on label '${label}' failed validation: ${issueText}` `` (where `issueText = issues.join("; ")`)
+- `UniqueConstraintViolationError`: `` `Unique constraint violation: property '${property}' on label '${label}' already has value ${JSON.stringify(value)} (existing element: ${existingElementId})` ``
+- `ReadonlyGraphError`: `` `Query contains mutation step '${stepName}' but readonly mode is enabled` ``
+
+**Safety Limits:** `DEFAULT_MAX_REPEATS = 1000` (RepeatStep), `DEFAULT_MAX_COLLECTION_SIZE = 100000` (CollectStep), `DEFAULT_MAX_GROUPS = 100000` (GroupByStep).
+
+**Quantifier Emission:** Range quantifiers (`*1..3`) emit results at EACH hop within range; use `DISTINCT` to deduplicate.
+
+**Anonymous Variables:** Prefix `__anon_${counter}` (counter starts 0) for unnamed nodes in CREATE patterns.
+
+**Step JSON Tuple Format:** `[stepName: string, config: object, nestedSteps?: Step[]]`. Container steps include third element; leaf steps omit. `FilterPredicateStep.fromJSON` and `MapElementsStep.fromJSON` always return `null` (non-serializable function predicates).
 
 ## Reproduction-Critical Constants
 
-- Package dependency manifest and script definitions: [package.annex.sum](./package.annex.sum)
-- Schema guide prompt templates for LLM documentation generation: [src/generateSchemaGuide.annex.sum](./src/generateSchemaGuide.annex.sum)
+Schema guide templates: [generateSchemaGuide.annex.sum](./src/generateSchemaGuide.annex.sum)
+Package configuration: [package.annex.sum](./package.annex.sum)
