@@ -2,80 +2,100 @@
 
 # y-graph-storage
 
-Package exports YGraph extending Graph, YGraphStorage implementing GraphStorage, LiveQuery for reactive traversal re-execution, plus ZodYText/ZodYArray/ZodYMap/ZodYXmlFragment/ZodYXmlText/ZodYXmlElement schema helpers. Bridges @codemix/graph abstractions to Yjs types Y.Doc/Y.Map/Y.Array with automatic conflict resolution and zen-observable-ts subscriptions.
+CRDT-backed collaborative graph editing layer bridging @codemix/graph with Yjs documents. Exports YGraph (reactive graph with subscription-based change events), YGraphStorage (transactional CRDT adapter), LiveQuery (reactive query re-execution), and ZodYTypes (schema coercion helpers) for persisting graph structures inside Y.Doc with automatic conflict resolution.
 
 ## Contents
 
-### Core Source
-
-- [src/YGraphStorage.ts](./src/YGraphStorage.ts) - Exports YGraphStorage implementing GraphStorage via YGraphStorageConfig, with WeakMap caches #vertexIdentities/#edgeIdentities and transactional methods addVertex/deleteVertex using makeInternalKey.
-- [src/YGraph.ts](./src/YGraph.ts) - Exports YGraph<TSchema> extending Graph<TSchema> from YGraphConfig<TSchema> exposing doc: Y.Doc and storage: YGraphStorage; subscribe() returns Observable<YGraphChange>, query() returns LiveQuery using zen-observable-ts and createGraphObserver().
-- [src/LazyPropertyDictionary.ts](./src/LazyPropertyDictionary.ts) - Exports createLazyPropertyDictionary() factory using $YMap symbol and descriptorCache WeakMap for Y.Map-backed property proxies.
-- [src/index.ts](./src/index.ts) - Barrel export of YGraph, YGraphStorage, ZodYTypes.
-
-### Type System
-
-- [src/ZodYTypes.ts](./src/ZodYTypes.ts) - Exports ZodYText, ZodYArray, ZodYMap, ZodYXmlFragment, ZodYXmlText, ZodYXmlElement schemas with union validation accepting native Yjs instances or coercible primitives.
-
-### Tests
-
-- [src/YGraphStorage.test.ts](./src/YGraphStorage.test.ts) - Validates CRDT operations, identity semantics (clone === alice), subscription events (vertex.added, edge.added, vertex.property.changed), live query reactivity.
-- [src/ZodYTypes.test.ts](./src/ZodYTypes.test.ts) - Validates Zod coercion for Y.Text/Y.Array/Y.Map/XML types, identity preservation, safeParse errors.
-
 ### Configuration
 
-- [package.json](./package.json) - ES module package v0.0.5. Declares exports ./dist/index.js, peer dependencies yjs and @codemix/graph, deps zen-observable-ts and zod.
-- [tsconfig.json](./tsconfig.json) - TypeScript configuration extending workspace packages/tsconfig-common.json.
-- [vitest.config.ts](./src/../vitest.config.ts) - Vitest configuration with 20000ms timeout, globals enabled, excludes dist/** and coverage/**.
-- [CHANGELOG.md](./CHANGELOG.md) - Version history tracking dependency bumps and npm publishing automation.
-- [README.md](./README.md) - API documentation for YGraph, YGraphStorage, LiveQuery, Zod helpers, YGraphChange protocol, Y.Doc layout.
+- [CHANGELOG.md](./CHANGELOG.md) - Version history tracking @codemix/y-graph-storage releases.
+- [README.md](./README.md) - API documentation covering YGraph, YGraphStorage, LiveQuery, ZodYTypes, Change Event Protocol, Zod Schema Helpers, and internal Y.Doc layout.
+- [package.json](./package.json) - Package manifest v0.0.5, ES module YJS adapter with ESM exports pointing to ./dist/index.js.
+- [tsconfig.json](./tsconfig.json) - TypeScript compiler configuration.
+- [vitest.config.ts](./vitest.config.ts) - Vitest configuration with 20000ms timeout, globals enabled, excluding dist/** and coverage/**.
+
+### Source
+
+- [src/index.ts](./src/index.ts) - Barrel re-export of YGraph, YGraphStorage, ZodYTypes.
+- [src/YGraph.ts](./src/YGraph.ts) - YGraph class extending Graph. Implements subscribe() with lazy Observable instantiation via #subscribers Set, query() returning LiveQuery, transaction-wrapped mutations addVertex/addEdge/updateProperty/deleteVertex/deleteEdge.
+- [src/YGraphStorage.ts](./src/YGraphStorage.ts) - YGraphStorage implementing GraphStorage interface. WeakMap identity caching (#vertexIdentities, #edgeIdentities), collection map accessors getVertexCollectionMap(label)/getEdgeCollectionMap(label), transact() wrapper for Y.Doc transactions.
+- [src/LazyPropertyDictionary.ts](./src/LazyPropertyDictionary.ts) - createLazyPropertyDictionary() factory returning Proxy with descriptorCache-backed property descriptors using $YMap symbol for Y.Map access.
+- [src/ZodYTypes.ts](./src/ZodYTypes.ts) - Zod schema factories ZodYText, ZodYArray, ZodYMap, ZodYXmlFragment, ZodYXmlText, ZodYXmlElement coercing JavaScript values to Yjs types.
+- [src/YGraph.test.ts](./src/YGraph.test.ts) - Validates YGraphChange discriminated unions (vertex.added, edge.deleted, property.set, property.changed), LiveQuery subscription filtering, transaction batching.
+- [src/YGraphStorage.test.ts](./src/YGraphStorage.test.ts) - Tests CRUD operations, WeakMap identity semantics, cascade delete behavior, GraphTraversal integration.
+- [src/ZodYTypes.test.ts](./src/ZodYTypes.test.ts) - Validates coercion logic: ZodYText accepts string/Y.Text rejects number/null, ZodYArray validates items against element schema.
 
 ## Stack
 
-- **yjs** - Provides Y.Doc, Y.Map, Y.Array, Y.Text, XML types for CRDT operations.
-- **@codemix/graph** - Workspace dependency providing Graph, GraphStorage, GraphTraversal, traversal steps (FetchVerticesStep, FilterElementsStep).
-- **zen-observable-ts** - Observable implementation for YGraph.subscribe() and LiveQuery.
-- **zod** - Schema validation for ZodYTypes coercion.
-
-## Architecture
-
-Three-layer integration bridging @codemix/graph to Yjs:
-
-1. **Storage Layer**: YGraphStorage implements GraphStorage from @codemix/graph. Maps vertex/edge collections to Y.Map structures keyed by `V:${label}` and `E:${label}`. Maintains object identity via #vertexIdentities/#edgeIdentities WeakMap caches keyed by Y.Map instances.
-2. **Graph Layer**: YGraph extends Graph. Injects reactive capabilities via zen-observable-ts Observable from createGraphObserver(). LiveQuery analyzes traversal steps (FetchVerticesStep, FilterElementsStep) to filter YGraphChange relevance.
-3. **Property Layer**: createLazyPropertyDictionary() creates descriptors proxying access to underlying Y.Map.get()/set() operations via $YMap symbol.
+- **CRDT Runtime**: `yjs` (Y.Doc, Y.Map, Y.Text, Y.Array, observeDeep)
+- **Reactivity**: `zen-observable-ts` (Observable, Observer, Subscription)
+- **Schema Validation**: `zod` with custom coercion pipelines
+- **Base Graph API**: `@codemix/graph` (Graph, GraphSchema, GraphStorage, ElementId, Vertex, Edge)
 
 ## API Surface
 
-- **YGraph** - Constructor new YGraph({ schema: GraphSchema, doc: Y.Doc }). Methods: addVertex(), addEdge(), updateProperty(), deleteVertex(), deleteEdge(), subscribe(), query().
-- **YGraphStorage** - Constructor new YGraphStorage(doc: Y.Doc, opts: { schema: GraphSchema }). Implements GraphStorage interface.
-- **LiveQuery** - Returned by YGraph.query(traversalFn). Method subscribe() re-executes traversal on relevant YGraphChange events.
-- **Zod Helpers** - ZodYText, ZodYArray(elementSchema), ZodYMap(valueSchema), ZodYXmlFragment, ZodYXmlText, ZodYXmlElement for GraphSchema property definitions.
+**Primary Exports** ([src/index.ts](./src/index.ts)):
 
-## Patterns
+- `YGraph<TSchema>` - Constructor accepts `YGraphConfig<TSchema>` with `schema` (GraphSchema) and `doc` (Y.Doc). Methods: `subscribe(observer: { next(change: YGraphChange) }): () => void` (unsubscribe function), `query(traversalFn: (g: GraphTraversal) => Traversal): LiveQuery`.
+- `YGraphStorage` - Constructor `(doc: Y.Doc, config: { schema: GraphSchema })`. Accessors: `doc` (Y.Doc), `getVertexCollectionMap(label: string): Y.Map<Y.Map<unknown>>`, `getEdgeCollectionMap(label: string): Y.Map<Y.Map<unknown>>`. Mutation methods: `addVertex(label, properties)`, `deleteVertex(vertex)` (cascades to attached edges), `addEdge(outV, label, inV, properties)`, `deleteEdge(edge)`, `updateProperty(element, key, value)`, `transact(fn: () => T): T`.
+- `ZodYTypes` - Object containing `ZodYText`, `ZodYArray<T>(elementSchema)`, `ZodYMap<V>(valueSchema)`, `ZodYXmlFragment`, `ZodYXmlText`, `ZodYXmlElement`.
 
-- **Barrel Export**: index.ts consolidates YGraph, YGraphStorage, ZodYTypes.
-- **WeakMap Identity Caching**: YGraphStorage.#vertexIdentities and #edgeIdentities cache StoredVertex/StoredEdge objects keyed by Y.Map instances to preserve reference equality across storage lookups.
-- **Lazy Subscription Management**: YGraph.#subscribers Set tracks Observer<YGraphChange>. Instantiates Observable via createGraphObserver() on first subscription, nulls #subscription when Set empties.
-- **Zod Union Coercion**: Schemas use z.union([z.custom<Y.Type>, z.primitive()]) accepting native Yjs instances or coercible values (strings, arrays, objects).
-- **Internal Key Namespacing**: makeInternalKey() prefixes `@` to avoid user property collision. Edge connectivity uses $InVKey="@inV", $OutVKey="@outV", $InEKey="@inE", $OutEKey="@outE".
+**Key Types**:
+
+- `YGraphChange` - Discriminated union by `kind` string: `"vertex.added"`, `"vertex.deleted"`, `"edge.added"`, `"edge.deleted"`, `"vertex.property.set"`, `"edge.property.set"`, `"vertex.property.changed"`, `"edge.property.changed"`. Payload includes `id: ElementId`, `property?: string`, `path?: (string|number)[]`, `event?: Y.YEvent`.
+- `LiveQuery<TSchema, TTraversal>` - `subscribe(observer)`, `traverse()`, `[Symbol.iterator]`, `toString()`.
+
+## Architecture
+
+**Layer Stack**:
+
+1. `YGraph` ([src/YGraph.ts](./src/YGraph.ts)) - Observable façade exposing traversal API (V(), E(), out(), in(), hasLabel(), values()). Lazy subscription pattern: #subscribers Set instantiates Observable on first subscribe(), tears down observeDeep listener when empty.
+2. `YGraphStorage` ([src/YGraphStorage.ts](./src/YGraphStorage.ts)) - CRDT operations layer managing collection maps `V:${label}` and `E:${label}`. WeakMap caches (#vertexIdentities, #edgeIdentities) preserve object identity across lookups.
+3. `LazyPropertyDictionary` ([src/LazyPropertyDictionary.ts](./src/LazyPropertyDictionary.ts)) - Proxy layer converting property access to Y.Map lookups with descriptor caching.
+4. `Yjs` - Underlying CRDT document state (Y.Doc).
+
+**Data Flow**:
+
+- **Writes**: `YGraphStorage` methods wrap mutations in `#doc.transact()` for atomic updates.
+- **Observations**: `createGraphObserver()` iterates schema.vertices/schema.edges, attaches `observeDeep` to each collection Y.Map. Handlers discriminate `path.length`: `0` emits lifecycle events from `YMapEvent.changes.keys`, `1` emits property.set events filtering keys starting with `@`, deeper paths emit property.changed with full path array.
+- **Queries**: `createPredicatesForTraversalSteps()` analyzes traversal steps (FetchVerticesStep, FetchEdgesStep, FilterElementsStep, VertexStep, EdgeStep) to build relevance filters for LiveQuery re-execution.
 
 ## Behavioral Contracts
 
-- **Element ID format**: `${label}:${uuid}`
-- **Metadata filtering**: `key.startsWith("@")` returns early, skipping internal properties in change emissions
-- **Collection storage keys**: `` `V:${label}` `` for vertices, `` `E:${label}` `` for edges
-- **Internal edge reference keys**: `$InVKey = "@inV"` (target vertex), `$OutVKey = "@outV"` (source vertex), `$InEKey = "@inE"` (incoming edge set), `$OutEKey = "@outE"` (outgoing edge set)
-- **Change emission path discrimination**:
-  - `path.length === 0`: element lifecycle changes from YMapEvent.changes.keys (add/delete)
-  - `path.length === 1`: direct property set (ignoring keys starting with `"@"`)
-  - Deeper paths: nested property change with destructured `[uuid, property, ...path]` and `event: Y.YEvent<any>`
-- **Transaction boundary**: All mutations execute inside `#doc.transact((doc) => { ... })`
-- **Cascade delete**: `deleteVertex` removes connected edges from opposite vertex's $OutEKey/$InEKey maps before deletion
+**Element ID Format**:
 
-## File Relationships
+- Template: `${label}:${uuid}`
+- Parsing: splits on `:` into `[label, uuid]` tuple
 
-- YGraph.ts imports YGraphStorage from `./YGraphStorage.js` and depends on @codemix/graph for Graph, GraphTraversal, Traversal, KnownSteps, step classes (FetchEdgesStep, FetchVerticesStep, FilterElementsStep, RepeatStep, VertexStep, EdgeStep), ElementId, getLabelFromElementId.
-- YGraphStorage.ts imports createLazyPropertyDictionary from `./LazyPropertyDictionary.js` and depends on @codemix/graph for GraphSchema, GraphStorage, LabelNotFoundError, VertexNotFoundError, EdgeNotFoundError, ElementNotFoundError, ElementId, getLabelFromElementId.
-- LazyPropertyDictionary.ts depends on @codemix/graph for ElementSchema, PropertiesFromSchema.
-- Test files import subjects from sibling `.js` paths (e.g., `./ZodYTypes.js`).
+**Internal Key Conventions**:
+
+- Prefix: `@` generated via `makeInternalKey()`
+- Edge endpoint keys: `$InVKey = "@inV"`, `$OutVKey = "@outV"`
+- Edge adjacency keys: `$InEKey = "@inE"`, `$OutEKey = "@outE"`
+
+**Collection Naming**:
+
+- Vertex collections: `` `V:${label}` ``
+- Edge collections: `` `E:${label}` ``
+
+**Metadata Filtering**:
+
+- Early return when `key.startsWith("@")` — prevents emission of internal properties in `vertex.property.set` and `vertex.property.changed` events.
+
+**Change Path Semantics**:
+
+- `path.length === 0`: Element lifecycle events (add/delete) derived from `YMapEvent.changes.keys`
+- `path.length === 1`: Direct property assignment with keys `[uuid, property]`
+- Deeper paths: Nested CRDT mutations with `[uuid, property, ...path]` destructuring
+
+**Identity Guarantees**:
+
+- `YGraphStorage` caches `StoredVertex`/`StoredEdge` objects in WeakMaps keyed by `Y.Map` instance. Repeated lookups of the same underlying Y.Map return identical object references.
+
+**Cascade Behavior**:
+
+- `deleteVertex(id)` reads `@inE` and `@outE` adjacency maps from the vertex Y.Map, iterates attached edge IDs, removes each edge from the opposite vertex's adjacency map before deleting the edge record.
+
+**Edge Connection Protocol**:
+
+- `addEdge(edge)` stores `@outV` (source ElementId) and `@inV` (target ElementId) in the edge's Y.Map, then writes the edge ID to `@outE` of the source vertex and `@inE` of the target vertex with value `true`.

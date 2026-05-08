@@ -2,16 +2,35 @@
 
 # packages
 
-Monorepo workspace packages root containing shared TypeScript configuration and domain-specific packages forming the codemix graph platform. Houses three workspace dependencies: the core property graph database with Cypher support, full-text search utilities for BM25 indexing, and Yjs-based collaborative storage adapters.
+pnpm workspace root housing shared TypeScript configuration and three interdependent packages forming the codemix graph database platform. Contains `@codemix/graph` (Cypher-compatible graph engine), `@codemix/text-search` (BM25 indexing), and `@codemix/y-graph-storage` (Yjs CRDT editing layer).
 
 ## Contents
 
-[tsconfig-common.json](./tsconfig-common.json) — Shared TypeScript configuration extending ES2024, NodeNext module resolution, strict mode with `noUncheckedIndexedAccess`, declaration emit, and source maps. Referenced by all workspace packages via `extends`.
+- [tsconfig-common.json](./tsconfig-common.json) — Workspace-wide TypeScript baseline extending ES2024, NodeNext module resolution, strict mode with `noUncheckedIndexedAccess`, declaration emit, and sourceMap generation.
 
 ## Subdirectories
 
-[graph/](./graph/) — TypeScript-first in-memory property graph database implementing Cypher-compatible query language with `grammar.peggy` PEG parser, `FunctionRegistry` with 70+ builtins, `Step` hierarchy execution pipeline, and `StandardSchemaV1` validation. Exports `@codemix/graph` with `Graph<Schema>` runtime, `parseQueryToSteps`, `TraversalPath` immutable linked lists, and `AsyncGraph` transport.
+### [graph/](./graph/)
 
-[text-search/](./text-search/) — BM25 full-text search engine with tokenization, stemming, and matching utilities. Exports `tokenizer.ts` (lexical analysis), `stemmer.ts` (Porter stemming), `matcher.ts` (BM25 scoring). Dependency of `graph` package for `FullTextIndex` implementation.
+Cypher-compatible in-memory property graph database with TinkerPop/Gremlin traversal API. Compiles textual queries via Peggy parser into executable step pipelines. Exports `Graph<Schema>`, `GraphTraversal`, `parseQueryToSteps`, indexing infrastructure, and TCK-compliant query engine. See [graph/AGENTS.md](./graph/AGENTS.md) for architecture details.
 
-[y-graph-storage/](./y-graph-storage/) — Yjs-based CRDT storage adapter exporting `YGraph` extending `Graph`, `YGraphStorage` implementing `GraphStorage`, `LiveQuery` for reactive traversal re-execution via `zen-observable-ts`, and `ZodYTypes` schemas. Bridges `@codemix/graph` abstractions to `Y.Doc` types with `WeakMap` identity caching and `createLazyPropertyDictionary` property proxies.
+### [text-search/](./text-search/)
+
+BM25 full-text indexing and tokenization utilities supporting the graph package's text search indexes. Exports `tokenize`, `stem`, and `match` functions with relevance scoring.
+
+### [y-graph-storage/](./y-graph-storage/)
+
+CRDT-backed collaborative graph editing layer bridging `@codemix/graph` with Yjs documents. Exports `YGraph` (reactive graph with subscription-based change events), `YGraphStorage` (transactional CRDT adapter), `LiveQuery` (reactive query re-execution), and `ZodYTypes` (schema coercion helpers) for persisting graph structures inside Y.Doc with automatic conflict resolution. See [y-graph-storage/AGENTS.md](./y-graph-storage/AGENTS.md) for architecture details.
+
+## Stack
+
+- **Workspace Manager**: pnpm workspaces (defined in `../pnpm-workspace.yaml`)
+- **TypeScript**: Shared base config at `tsconfig-common.json` with strict settings, consumed via `extends` in package-level configs
+- **Package References**: `packages/graph` references `../text-search` in `tsconfig.json` for workspace dependency resolution
+- **Interdependency**: `y-graph-storage` depends on `@codemix/graph`; `graph` depends on `@codemix/text-search`
+
+## Configuration
+
+**Shared TypeScript Options** ([tsconfig-common.json](./tsconfig-common.json)): `target: "ES2024"`, `module: "NodeNext"`, `moduleResolution: "NodeNext"`, `strict: true`, `noUncheckedIndexedAccess: true`, `declaration: true`, `sourceMap: true`, `esModuleInterop: true`, `skipLibCheck: true`.
+
+**Cross-Package Development**: Each package uses `composite: true` and `references` arrays for project-to-project TypeScript builds. `y-graph-storage` and `graph` both enable `declarationMap` for jump-to-definition across package boundaries.
