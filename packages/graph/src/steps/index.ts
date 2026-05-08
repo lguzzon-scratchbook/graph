@@ -81,3 +81,16 @@ export {
   type SearchedCaseAlternativeValue,
   type MapProjectionSelectorValue,
 } from "../Steps.js";
+
+// ============================================================================
+// Fetch Steps (Wave 2 - category modules)
+// ============================================================================
+
+export {
+  FetchVerticesStep,
+  FetchEdgesStep,
+  CartesianFetchStep,
+  type FetchVerticesStepConfig,
+  type FetchEdgesStepConfig,
+  type CartesianFetchStepConfig,
+} from "./fetch/index.js";
