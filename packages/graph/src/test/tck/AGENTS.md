@@ -2,111 +2,61 @@
 
 # tck
 
-OpenCypher Technology Compatibility Kit compliance test suite. Translates Neo4j TCK specifications into executable Vitest cases, tracks coverage metrics (2,508 tests, 47.4% pass), and catalogs implementation gaps versus design limitations.
+OpenCypher Technology Compatibility Kit (TCK) test infrastructure, compliance tracking documentation, and categorized test suites validating Cypher query implementation against the open standard.
 
 ## Contents
 
-- [TCK_COVERAGE_REPORT.md](./TCK_COVERAGE_REPORT.md) — Compliance dashboard. 2,508 tests across 221 files. Tracks pass rates by category (Clauses 27.2%, Expressions 41.0%, Use Cases 40.0%). Documents full/partial/unsupported feature tiers and roadmap priorities.
-- [TCK_GAP_ANALYSIS.md](./TCK_GAP_ANALYSIS.md) — Skip reason taxonomy. Distinguishes permanent design limitations (unlabeled nodes, multi-label, label removal) from implementation blockers (OPTIONAL MATCH, undirected edges, DISTINCT aggregates). Lists 3,922 passing (77.5%) vs 1,138 skipped (22.5%).
-- [tckHelpers.ts](./tckHelpers.ts) — Test infrastructure. Exports `createTckGraph()`, `executeTckQuery()`, `resultsMatch()`, `normalizeResult()`, `getLabel()`, `getType()`, `getProperty()`, `getId()`. Defines permissive `tckSchema` with 35+ vertex labels and 45+ edge types.
-- [tck.test.ts](./tck.test.ts) — Infrastructure self-test. Validates `createTckGraph`, `executeTckQuery`, `resultsMatch`, `normalizeResult` against empty graph and basic Cypher operations.
+- [TCK_COVERAGE_REPORT.md](./TCK_COVERAGE_REPORT.md) — Tracks 2,508 TCK tests across 221 files with 47.4% pass rate (1,190 passing, 1,318 skipped). Documents feature support tiers (Full, Partial, Unsupported By Design, Not Implemented) and implementation roadmap prioritizing OPTIONAL MATCH edge cases, DISTINCT aggregates, and CALL procedures.
+- [TCK_GAP_ANALYSIS.md](./TCK_GAP_ANALYSIS.md) — Catalogs 5,060 total TCK tests (77.5% passing, 22.5% skipped) distinguishing permanent design limitations (~245 tests: unlabeled nodes, multi-label, label removal) from implementation blockers (~850 tests) and identifying erroneously skipped tests eligible for re-enablement.
+- [tck.test.ts](./tck.test.ts) — Infrastructure self-test suite validating `createTckGraph`, `executeTckQuery`, `resultsMatch`, `normalizeResult`, `extractProperties`, and `getLabel` operations from tckHelpers.
+- [tckHelpers.ts](./tckHelpers.ts) — Core testing utilities exporting `tckSchema` (permissive GraphSchema with 35+ vertex labels including A-Z, Person, Artist, Dog, and 45+ edge types including KNOWS, FRIEND, ACTED_IN), `createTckGraph()` factory, `executeTckQuery()` pipeline (parse → anyAstToSteps → createTraverser), and result comparison helpers. Dependencies: `../../grammar.js`, `../../astToSteps.js`, `../../Steps.js`, `../../QueryContext.js`, `../../Graph.js`, `../../GraphStorage.js`.
 
 ## Subdirectories
 
-- [clauses/](./clauses/) — 94 test files validating Cypher clause compliance (CALL, CREATE, DELETE, MATCH, MERGE, REMOVE, RETURN, SET, UNION, UNWIND, WITH). Each file maps to TCK feature specifications. Uses `test.fails` for unimplemented features.
-- [expressions/](./expressions/) — 125+ test files covering expression evaluation (Aggregation, Boolean, Comparison, Conditional, Graph functions, List, Literals, Map, Mathematical, Null, Path, Pattern, Precedence, Quantifier, String, Temporal, TypeConversion).
-- [useCases/](./useCases/) — High-level scenario tests (CountingSubgraphMatches, TriadicSelection). Validates friend-of-friend patterns and subgraph counting.
-
-## API Surface
-
-`tckHelpers.ts` exports:
-
-- `createTckGraph(): Graph<TckSchema>` — Factory. Returns `new Graph({schema: tckSchema, storage: new InMemoryGraphStorage()})`.
-- `executeTckQuery(graph, queryString, params?): unknown[]` — Executor. Pipeline: `parse()` → `anyAstToSteps()` → `createTraverser()` → `traverser.traverse()`.
-- `resultsMatch(actual, expected): boolean` — Multiset equality checker. Bag semantics; order irrelevant. Returns false on length mismatch or missing pairings.
-- `normalizeResult(value): unknown` — Recursive cleaner. Strips keys starting with `$`.
-- `extractProperties(value): Record<string, unknown>` — Property filter. Excludes `$`-prefixed keys.
-- `getLabel(value): string | undefined` — Label extractor. Priority: `instanceof Element` → `value.label`; `value.$label`; parse `value.id` before colon.
-- `getType(value): string | undefined` — Type extractor. Priority: `instanceof Element` → `value.label` (edges store types as labels); `value.$type`; parse `value.id`.
-- `getProperty(value, name): unknown` — Property getter. Branch: `Element.get()` vs `value.properties[name]`.
-- `getId(value): string | undefined` — ID getter. Returns `value.id` for Elements or POJOs.
-- `tckSchema` — GraphSchema constant. 35+ vertex labels (A-Z, Person, Artist, Movie, etc.), 45+ edge types (KNOWS, FRIENDS, LIKES, T, R, etc.).
-- `TckSchema` — Type alias `typeof tckSchema`.
-- `makeType<T>(): StandardSchemaV1<T>` — Schema factory. Permissive validation; never throws.
+- [clauses/](./clauses/) — Clause-specific compliance tests organized by Cypher operation: Match1-9, Create1-6, Return1-8, With1-7, Merge1-9, Delete1-6, Set1-6, Remove1-3, Union1-3, Unwind1, Call1-6, plus OrderBy, SkipLimit, and Where variants for Match and With.
+- [expressions/](./expressions/) — Expression and function compliance tests: Aggregation1-8, Boolean1-5, Comparison1-4, Conditional1-2, ExistentialSubquery1-3, Graph1-9, List1-12, Literals1-8, Map1-3, Mathematical1-17, Null1-3, Path1-3, Pattern1-2, Precedence1-4, Quantifier1-12, String1-14, Temporal1-10, TypeConversion1-6.
+- [useCases/](./useCases/) — Complex graph pattern tests: CountingSubgraphMatches1, TriadicSelection1.
 
 ## Behavioral Contracts
 
-**ID Serialization Format**: Colon-separated prefix and uuid. Pattern `Label:uuid` (vertices), `Type:uuid` (edges). Parsed via `id.indexOf(":")` with `substring(0, colonIndex)`.
+**Skip Reason Format**  
+`test.skip("[TCK test ID] Description - reason for skip", ...)`
 
-**Internal Property Prefix**: Dollar sign `$` indicates metadata. `$id`, `$label`, `$type`. Functions `normalizeResult` and `extractProperties` filter these.
+**Valid Implementation Gap Strings**  
+`undirected edges not supported`, `variable-length *0 not supported`, `user-defined procedures not supported`, `DISTINCT in aggregates not supported`, `semantic validation not implemented`, `OPTIONAL MATCH with bound variables`, `ORDER BY expression evaluation`, `SKIP/LIMIT only accept integer literals`, `aggregation in ORDER BY not supported`
 
-**Skip Reason Format**: `test.skip("[TCK test ID] Description - reason for skip", ...)`
+**Outdated Skip Strings (Features Now Working)**  
+`RETURN-only queries not supported`, `named path syntax not supported`, `parameters not supported`, `temporal types not supported`, `ORDER BY alias not supported`, `count(*) not supported`, `WITH...MATCH chaining not supported`, `toBoolean() not implemented`, `startNode()/endNode() not implemented`, `UNWIND not supported`, `list comprehension not supported`, `id()/type()/labels()/keys()/properties() not supported`
 
-Valid implementation gap strings:
+**ID Serialization Format**  
+Colon-separated prefix and UUID. Pattern: `Label:uuid` for vertices, `Type:uuid` for edges. Parsed via `id.indexOf(":")` with `substring(0, colonIndex)`.
 
-- `undirected edges not supported`
-- `variable-length *0 not supported`
-- `user-defined procedures not supported`
-- `DISTINCT in aggregates not supported`
-- `semantic validation not implemented`
-- `OPTIONAL MATCH with bound variables`
-- `ORDER BY expression evaluation`
-- `SKIP/LIMIT only accept integer literals`
-- `aggregation in ORDER BY not supported`
+**Internal Property Prefix**  
+Dollar sign `$` indicates internal metadata: `$id`, `$label`, `$type`. Functions `normalizeResult` and `extractProperties` explicitly filter keys where `key.startsWith("$")`.
 
-Outdated strings (features working, eligible for re-audit):
+**Query Result Formats**
 
-- ~~`RETURN-only queries not supported`~~
-- ~~`named path syntax not supported`~~
-- ~~`parameters not supported`~~
-- ~~`temporal types not supported`~~
-- ~~`ORDER BY alias not supported`~~
-- ~~`count(*) not supported`~~
-- ~~`WITH...MATCH chaining not supported`~~
-- ~~`toBoolean() not implemented`~~
-- ~~`startNode()/endNode() not implemented`~~
-- ~~`UNWIND not supported`~~
-- ~~`list comprehension not supported`~~
-- ~~`id()/type()/labels()/keys()/properties() not supported`~~
+- Single `RETURN` projection: raw scalars in array (`["test"]`), not keyed objects
+- Multiple `RETURN` items: nested arrays (`[["a", "b"]]`)
+- `COUNT(n)` aggregation: scalar number in array (`[3]`)
+- Internal properties `$id`, `$label` stripped by `normalizeResult`/`extractProperties`
 
-**Result Comparison Semantics**: `resultsMatch` implements bag/multiset equality. Each actual result matches distinct expected result. Uses internal `deepEqual`: strict primitives; recursive arrays; recursive objects (key count and value).
+**Result Comparison Semantics**  
+`resultsMatch` implements bag/multiset equality. Each actual result must match distinct expected result via internal `deepEqual`. Order irrelevant. Returns false if length mismatch.
 
-**Query Result Formats**:
+**Permissive Validation**  
+`makeType<T>()` validators never throw. Always return input value cast to target type via `{value: value as T}`.
 
-- Single `RETURN` projection: raw scalars in array (`["test"]`), not keyed objects.
-- Multiple `RETURN` items: nested arrays (`[["a", "b"]]`).
-- `COUNT(n)` aggregation: scalar number in array (`[3]`).
-
-**Element vs POJO Handling**: Accessor functions check `instanceof Element` first. Branch to OOP methods for instances. Branch to plain object access for serialized data.
-
-**Permissive Validation**: All schema validators use `makeType` pattern. Validate function never throws. Always returns input cast to target type.
+**Element vs POJO Handling**  
+Accessor functions (`getLabel`, `getType`, `getProperty`, `getId`) check `instanceof Element` first for OOP method access, else fallback to plain object property access.
 
 ## Workflow & Conventions
 
-**Test Registration Pattern**: `describe("[Clause][Number] - [Description]", () => { test("[n] [description]", () => { ... }) })` or `test.fails("[n] ...")` for known limitations.
+**Test Organization**  
+Files follow OpenCypher TCK naming convention `{Category}{Number}.test.ts` mapping to specification sections.
 
-**TCK Helper Imports**: All clause/expression tests import `createTckGraph()`, `executeTckQuery()` from `../tckHelpers.js`. Additional accessors: `getLabel()`, `getProperty()`, `getType()`, `getId()`.
+**Design Limitation Markers**  
+Skip reasons for permanent design decisions use "(by design)" suffix: `unlabeled nodes (by design)` (blocks 221 tests), `multi-label (by design)` (18 tests), `label removal (by design)`.
 
-**Graph Setup Pattern**: Tests initialize with `const graph = createTckGraph()` then populate via `executeTckQuery(graph, "CREATE (:Label)")` before assertions.
-
-**Result Extraction**: Single RETURN items wrapped in arrays requiring destructuring: `const [n] = results[0] as [Record<string, unknown>]`. Property access via `getProperty(n, "name")`.
-
-**Known Limitation Markers**: `test.fails` indicates unimplemented features: unlabeled nodes `()`, `count(*)` aggregation, parameters `$param`, temporal types `date()`, dynamic labels `SET n:Foo`.
-
-**Test Isolation**: Each test instantiates fresh graph via `createTckGraph()` to prevent state leakage.
-
-**Label Requirements**: All nodes require explicit labels; unlabeled node patterns `()` trigger grammar errors.
-
-**Case Sensitivity**: Labels and relationship types case-sensitive. Property keys case-sensitive.
-
-**Design Limitations (Permanent)**:
-
-- Unlabeled nodes (static schema requires labels) — 221 tests blocked
-- Multi-label syntax (single label per node) — 18 tests blocked
-- Label removal (immutable labels) — blocked by design
-
-**Implementation Blockers (Priority 1)**:
-
-- OPTIONAL MATCH edge cases (~50 tests, null propagation with bound variables)
-- Undirected edge patterns `(a)--(b)` (~30)
-- Variable-length paths `*0..N` (~20, zero minimum unsupported)
+**Re-Enablement Audit Checklist**  
+Before adding new skips, verify feature not already working: `count(*)`, `id()`, `elementId()`, `type()`, `labels()`, `properties()`, `keys()`, `range()`, `reverse()`, `head()`, `tail()`, `last()`, `coalesce()`, RETURN-only queries, WITH...MATCH chaining, Parameters (`$param`), undirected patterns `(a)-[]-(b)`, ORDER BY alias, temporal functions (`date()`, `time()`, `datetime()`, `duration()`), `startNode()`, `endNode()`, `toBoolean()`, UNWIND, list comprehension, quantifiers (`all`, `any`, `none`, `single`), named paths (`p = ...`).

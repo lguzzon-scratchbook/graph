@@ -2,224 +2,94 @@
 
 # packages/graph
 
-TypeScript-first in-memory property graph database implementing Cypher-compatible query language with Peggy-generated parser, discriminated-union AST, step-based execution pipeline, Gremlin-style fluent traversal API, and pluggable indexing subsystem (hash, btree, fulltext). Compiles textual queries into executable `Step[]` pipelines via `astToSteps`, executes against `Graph` instances backed by `InMemoryGraphStorage` or async transports, with Standard Schema v1 property validation and unique constraint enforcement.
+TypeScript-first in-memory property graph database implementing Cypher-compatible queries via Peggy-generated parser and Gremlin-style type-safe traversals, supporting pluggable storage backends (InMemoryGraphStorage, AsyncGraph transport) with Standard Schema v1 property validation and hash/btree/fulltext indexing.
 
 ## Contents
 
-### Package Manifests
-
-- [package.json](./package.json) — ESM module definition, exports `dist/index.js` with types `dist/index.d.ts`, scripts `build` (grammar compilation + tsc), `test` (vitest). Workspace dependency on `@codemix/text-search`, runtime deps `@standard-schema/spec`, `peggy`.
-- [CHANGELOG.md](./CHANGELOG.md) — API evolution: `TraversalPath.nodes()`, `ORDER BY` alias references, `ValueTraversal.dedup()`, `skip()`, `limit()`, `range()`, `count()`, `property()`, `properties()`.
-
-### Configuration
-
-- [tsconfig.json](./tsconfig.json) — Extends `../tsconfig-common.json`, `outDir: "./dist"`, `rootDir: "src"`, `composite: true`, references `../text-search`.
-- [vitest.config.ts](./vitest.config.ts) — `testTimeout: 20_000`, `globals: true`, `clearMocks: true`, coverage provider `istanbul` excluding `src/grammar.js`, `**/*.test.ts`, `dist/**`.
-
-### Core Source
-
-- [src/index.ts](./src/index.ts) — Barrel entry exporting `parseQueryToSteps(queryString, options)` with `readonly` safety via `MUTATION_STEP_NAMES` Set validation; `postprocess` function for result aliasing.
-- [src/grammar.peggy](./src/grammar.peggy) — PEG grammar: `MultiStatement` entry, `MatchClause`, `CreateClause`, `WhereClause` with `buildBinaryCondition` helper for left-nested condition trees.
-- [src/grammar.js](./src/grammar.js) — Peggy 5.1.0 generated parser, exports `parse(input, options)`, `SyntaxError`, `StartRules: ["MultiStatement"]`, 16 regex patterns `peg$r0` (identifier start `/^[a-zA-Z_]/`) through `peg$r15` (line breaks `/^[\n\r]/`).
-- [src/grammar.d.ts](./src/grammar.d.ts) — Type declarations for `Location`, `LocationRange`, `Expectation` union, `ParserTracer`, `parse()` overloads.
-- [src/AST.ts](./src/AST.ts) — Discriminated union AST nodes with `type` field tagging: `Query`, `MatchClause`, `CreateNodePattern`, `EdgePattern` (direction: `"in"|"out"|"both"`), `ShortestPathPattern`, `PropertyCondition`, `ArithmeticExpression`, `LabelOr`/`LabelAnd`/`LabelNot`.
-- [src/astToSteps.ts](./src/astToSteps.ts) — AST-to-Steps converter: `astToSteps(query)`, `unionAstToSteps(unionQuery)`, `anyAstToSteps(ast)`; `convertPattern` with `isAnchorPattern` heuristic; `convertQuantifiedEdge` builds `RepeatStep` with `emitInput: min === 0`, `times: max ?? 100`; `splitASTConditionByVariables` for early/late filter partitioning.
-- [src/Steps.ts](./src/Steps.ts) — Step execution engine: `Step<T>` base, `ContainerStep` nesting, `createTraverser(steps)` factory; concrete steps `FetchVerticesStep`, `EdgeStep`, `VertexStep`, `FilterElementsStep` with `Condition` tuples, `RepeatStep` (variable-length paths), `ShortestPathStep`, `UnionStep`, `CreateStep`, `MergeStep`, `SetStep`, `DeleteStep`.
-- [src/QueryContext.ts](./src/QueryContext.ts) — Immutable execution context: `#params`, `#graph`, `#options`; `maxIterations` default `1000`, `maxCollectionSize` default `100000`; `withParams()`/`withOptions()` return new instances.
-- [src/Comparator.ts](./src/Comparator.ts) — Cross-type ordering: `compare(a, b)` with `getTypeOrder` precedence `undefined(0) < null(1) < boolean(2) < number(3) < string(4) < object(5)`; `compareObjects` recursive comparison with `isPlainObject` validation (`constructor === Object`).
-- [src/Traversals.ts](./src/Traversals.ts) — Gremlin-style fluent API: `GraphTraversal` entry `V()`/`E()`; `VertexTraversal` `in()`/`out()`/`both()`, `has()`, `as()`, `select()`, `repeat()`, `shortestPath()`; compile-time path type tracking via `TraversalPath<TParent, TValue, TLabels>` with `#parent`, `#value`, `#labels`, `#depth` private fields.
-- [src/AsyncGraph.ts](./src/AsyncGraph.ts) — Async transport proxy: `AsyncGraph<TSchema>` with `transport: (command: AsyncCommand) => AsyncIterable<TransportableValue>`; `AsyncQuery`, `AsyncTransaction` discriminated by `@type`; `jsonClone` via `JSON.parse(JSON.stringify(value))`.
-- [src/Graph.ts](./src/Graph.ts) — Core runtime: `#vertexIdentities`/`#edgeIdentities` WeakMaps for object stability; `generateElementId(label)` returns `` `${label}:${generateId()}` ``; `parsePropertyValue` validates via Standard Schema v1 `validate()`; `addVertex`/`addEdge` with unique constraint checking via `indexManager.checkAllUniqueConstraints`.
-- [src/GraphStorage.ts](./src/GraphStorage.ts) — Storage interface: `ElementId<TLabel>` template literal `` `${TLabel}:${string}` ``; `parseElementId` splits on colon with limit 2; `InMemoryGraphStorage` with `#vertices`, `#edges`, `#incomingEdges`, `#outgoingEdges` Maps; cascade deletion in `deleteVertex` splicing bidirectional edge arrays.
-- [src/GraphSchema.ts](./src/GraphSchema.ts) — Type definitions: `GraphSchema` {vertices, edges}, `PropertySchema<TInput, TOutput>` with `StandardSchemaV1` type field, `IndexConfig` discriminated union (`HashIndexConfig`, `BTreeIndexConfig`, `FullTextIndexConfig`); type inference utilities `VertexProperties`, `EdgeProperties`, `ElementLabel`.
-- [src/FunctionRegistry.ts](./src/FunctionRegistry.ts) — Built-in Cypher functions: `#functions: Map<string, FunctionDefinition>` storing lowercase keys; `registerBuiltins()` populates scalar, aggregate, list, type, math, string, temporal categories; `evaluateFunction(name, args, path, distinct?)` wrapper; temporal functions `date()`, `localtime()`, `time()`, `datetime()`, `duration()` with ISO 8601 parsing.
-- [src/ProcedureRegistry.ts](./src/ProcedureRegistry.ts) — Built-in procedures: `#procedures` Map; `registerSchemaProcedures()` registers `db.labels`, `db.relationshipTypes`, `db.propertyKeys`, `db.schema.nodeTypeProperties`; signature format `` `${name}(${params.map((a) => `${a.name}${a.required ? "" : "?"}`).join(", ")})` ``.
-- [src/TemporalTypes.ts](./src/TemporalTypes.ts) — Temporal value classes: `DateValue`, `LocalTimeValue`, `TimeValue`, `LocalDateTimeValue`, `DateTimeValue`, `DurationValue` with ISO 8601 parsing via regex `/^(\d{4})-(\d{2})-(\d{2})$/`, `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/`; `TruncateUnit` type; `addDuration`, `subtractDuration`, `durationBetween` with month-end clamping via `getLastDayOfMonth`.
-- [src/Exceptions.ts](./src/Exceptions.ts) — Error hierarchy: `GraphError` base, `ElementNotFoundError`, `VertexNotFoundError`, `EdgeNotFoundError`, `LabelNotFoundError`, `UniqueConstraintViolationError` (message template with `property`, `value`, `existingElementId`), `MaxIterationsExceededError`, `MemoryLimitExceededError`, `ReadonlyGraphError`.
-- [src/generateSchemaGuide.ts](./src/generateSchemaGuide.ts) — LLM prompt generators: `generateGrammarDescription()`, `generateSchemaGuide<TSchema>(schema)`, `generateCompactSchemaGuide<TSchema>(schema)`; behavioral contract `@id` format `<EntityName>:<uuid>` (example `User:12345678-1234-1234-1234-123456789abc`); variable-length path quantifiers emit results at EACH hop (`*1..3` returns 1-hop, 2-hop, AND 3-hop).
-- [src/getDemoGraph.ts](./src/getDemoGraph.ts) — Test fixture factory: `createDemoGraph()` returns 7 Person vertices (alice, bob, charlie, dave, erin, fiona, george), 7 Thing vertices (apple, banana, cherry, dates, eggplant, fig, grape), "knows"/"likes" edge network.
-
-### Indexes
-
-- [src/indexes/index.ts](./src/indexes/index.ts) — Barrel re-export: `HashIndex`, `BTreeIndex`, `FullTextIndex`, `IndexManager`, `QueryPlanner` functions.
-- [src/indexes/HashIndex.ts](./src/indexes/HashIndex.ts) — O(1) equality index: `#index: Map<unknown, Set<ElementId>>`, `#reverse: Map<ElementId, unknown>`; skips null/undefined values via `typeof` check.
-- [src/indexes/BTreeIndex.ts](./src/indexes/BTreeIndex.ts) — Sorted array B-tree: binary search with `#findInsertionPoint` using `const mid = (low + high) >>> 1` for overflow-safe division; range queries `lookupLessThan`, `lookupGreaterThan`, `lookupRange`; validates `number | string` value types.
-- [src/indexes/FullTextIndex.ts](./src/indexes/FullTextIndex.ts) — BM25 inverted index: `@codemix/text-search` integration (`createMatcher`, `extractTerms`); `search()` returns ranked `FullTextSearchResult[]`, `searchContains`/`searchPrefix` return unranked `Set<ElementId>` with `toLowerCase()` normalization.
-- [src/indexes/IndexManager.ts](./src/indexes/IndexManager.ts) — Index lifecycle: `#indexKey` format `` `${label}.${property}` ``; lazy building via `#built: Set<string>`; `checkUniqueConstraint` throws `UniqueConstraintViolationError` for `hash`/`btree` unique indexes.
-- [src/indexes/QueryPlanner.ts](./src/indexes/QueryPlanner.ts) — Query optimization: `analyzeCondition` generates `IndexHint` array; `OPERATOR_TO_OPERATION` mapping `=`→equals, `in`→in, `<`/`<=`/`>`/`>=`→range; selectivity priorities (equals=100, in=90, range=80, startsWith=70, contains=60, search=50); `isConditionFullyCovered` returns false for `startsWith`, `contains` (post-filter required).
-
-### Tests
-
-- [src/test/](./src/test/) — Vitest suite (87 files): parser validation ([grammar.test.ts](./src/test/grammar.test.ts)), AST transformation ([astToSteps.test.ts](./src/test/astToSteps.test.ts)), traversal execution ([Traversals.test.ts](./src/test/Traversals.test.ts)), storage layers ([GraphStorage.test.ts](./src/test/GraphStorage.test.ts)), index management ([indexes.test.ts](./src/test/indexes.test.ts)), TCK compliance ([tck/](./src/test/tck/) subdirectory with 2,508 tests). Shared utilities in [testHelpers.ts](./src/test/testHelpers.ts): `executeQuery()` pipeline wrapper, `makeType<T>()` schema factory.
-
-### Scripts
-
-- [scripts/tck-audit.ts](./scripts/tck-audit.ts) — TCK compliance audit: discovers `test.skip` declarations via regex `` `/test\.skip\s*\(\s*["'`](.+?)["'`]/` ``, executes trial runs with temporary unskips, categorizes failures via `DESIGN_EXCLUSIONS` and `NOW_WORKING_PATTERNS` heuristics; CLI accepts `--dry-run`, `--file=<path>`, `--apply`; offset-prevention sort descending by `lineNumber` before `test.skip`→`test` replacements; restore guarantee via `try...finally` with original content restoration.
+- [CHANGELOG.md](./CHANGELOG.md) — Documents API evolution across versions 0.0.2–0.3.0, tracking additions to TraversalPath (nodes, relationships, length, sum methods) and ValueTraversal (dedup, skip, limit, range, count, property, properties methods).
+- [README.md](./README.md) — Public API documentation defining Graph<Schema> constructor with crypto.randomUUID default ID generation, Cypher query interface (parseQueryToSteps, parse, astToSteps), Gremlin Traversal API, indexing configuration, async transport, and error hierarchy.
+- [package.json](./package.json) — ESM module manifest exporting dist/index.js with build:grammar script compiling grammar.peggy via Peggy 5.1.0 return-types plugin, workspace dependencies @codemix/text-search and @standard-schema/spec.
+- [tsconfig.json](./tsconfig.json) — TypeScript configuration extending ../tsconfig-common.json, emitting to ./dist with composite project references to ../text-search.
+- [vitest.config.ts](./vitest.config.ts) — Vitest configuration with testTimeout 20000, istanbul coverage provider excluding src/grammar.js and \*_/_.test.ts from instrumentation.
 
 ## Subdirectories
 
-- **[src/](./src/)** — Core query engine: parser (grammar.\*), AST (AST.ts), compilation (astToSteps.ts), execution (Steps.ts, QueryContext.ts), traversal API (Traversals.ts), storage (GraphStorage.ts, Graph.ts), schema (GraphSchema.ts), extensibility (FunctionRegistry.ts, ProcedureRegistry.ts), types (TemporalTypes.ts, Exceptions.ts).
-- **[src/indexes/](./src/indexes/)** — Index implementations: HashIndex (O(1) equality), BTreeIndex (range queries), FullTextIndex (BM25), IndexManager (lifecycle), QueryPlanner (optimization).
-- **[src/test/](./src/test/)** — Test suites: parser, compilation, execution, storage, indexes, TCK compliance (openCypher Technology Compatibility Kit).
-- **[src/test/tck/](./src/test/tck/)** — TCK test suites: clauses (Match, Create, Merge, Delete, Set, Remove, Return, With, Union, Unwind, Call), expressions (Aggregation, Boolean, Comparison, List, Map, Mathematical, Null, Path, Pattern, String, Temporal, TypeConversion), use cases (CountingSubgraphMatches, TriadicSelection).
-- **[scripts/](./scripts/)** — Build and audit tooling: TCK skip detection and re-enablement analysis.
+- [scripts/](./scripts/) — Build utilities containing tck-audit.ts for TCK coverage analysis and compliance reporting.
+- [src/](./src/) — Core implementation: Peggy parser (grammar.peggy, grammar.js, grammar.d.ts), AST types (AST.ts), query execution engine (Steps.ts, astToSteps.ts, QueryContext.ts), graph runtime (Graph.ts, GraphStorage.ts, GraphSchema.ts, AsyncGraph.ts), traversal API (Traversals.ts), function/procedure registries (FunctionRegistry.ts, ProcedureRegistry.ts), temporal types (TemporalTypes.ts), utilities (Comparator.ts, Exceptions.ts, generateSchemaGuide.ts, getDemoGraph.ts), barrel export (index.ts).
+- [src/indexes/](./src/indexes/) — Pluggable indexing system: HashIndex.ts (O(1) equality), BTreeIndex.ts (O(log n) range), FullTextIndex.ts (BM25 via @codemix/text-search), IndexManager.ts coordinating unique constraints, QueryPlanner.ts for index hint selection.
+- [src/test/](./src/test/) — Comprehensive Vitest suite (87+ files): grammar parsing, AST-to-step compilation, traversal execution, storage tests, plus TCK compliance tests in tck/clauses/, tck/expressions/, tck/useCases/ covering 221 OpenCypher test cases.
+
+## Architecture / Data Flow
+
+```
+grammar.js:parse() → AST (Query | UnionQuery | MultiStatement)
+    ↓
+astToSteps.ts:anyAstToSteps() → Step[] (FetchVerticesStep, FilterElementsStep, etc.)
+    ↓
+Steps.ts:createTraverser(steps) → Traverser
+    ↓
+Traverser.traverse(graph, [], QueryContext) → Iterable<TraversalPath>
+    ↓
+TraversalPath.toJSON() / materialization → Results
+```
+
+FilterElementsStep utilizes IndexManager (hash/btree/fulltext) for query optimization before iteration. RepeatStep handles variable-length paths with cycle detection via seen: Set<ElementId>. AsyncGraph proxies execution over JSON-serializable transports via handleAsyncCommand dispatcher.
 
 ## Stack
 
-- **Parser**: Peggy 5.1.0 (`grammar.peggy` → `grammar.js`)
-- **Schema Validation**: Standard Schema v1 (`@standard-schema/spec`) via `PropertySchema["~standard"].validate()`
-- **Text Search**: `@codemix/text-search` (BM25 matcher for FullTextIndex)
-- **Identity Mapping**: WeakMap-based object stability (`#vertexIdentities`, `#edgeIdentities` in Graph.ts)
-- **Type System**: TypeScript with recursive generic inference for compile-time path tracking (`TraversalPath`, `GetTraversalPathItems`, `ResolveTraversalPathLabelModifiers`)
-- **Testing**: Vitest with `testTimeout: 20_000`, coverage via Istanbul
-
-## Patterns
-
-- **Discriminated Union Tagging**: AST nodes use `type: "NodeName"` literal fields; AsyncGraph operations use `@type` string discriminant (`"AsyncQuery"`, `"AddVertexOperation"`, `"AsyncOperationSuccess"`).
-- **Barrel Re-exports**: `src/index.ts` aggregates public API; `src/indexes/index.ts` aggregates index implementations.
-- **Lazy Index Building**: `IndexManager.ensureUniqueIndexesBuilt(label, vertices)` populates indexes on first access; `#built: Set<string>` tracks status.
-- **Reverse Lookup Maps**: `HashIndex` and `BTreeIndex` maintain `#reverse: Map<ElementId, unknown>` enabling `remove(elementId, value)` without stored value parameter.
-- **Factory Pattern**: `IndexManager.#createIndex` instantiates concrete index types based on `IndexConfig.type` with exhaustive `never` check for unknown types.
-- **Fluent API Chaining**: `VertexTraversal` methods return new instances with spread step arrays `[...this.steps, new XyzStep({...})]`, enabling immutable query construction.
-- **WeakMap Identity**: `Graph.#vertexIdentities` and `#edgeIdentities` WeakMaps ensure `instantiateVertex`/`instantiateEdge` return stable object references for same `StoredVertex`/`StoredEdge`.
+- **Parser**: Peggy 5.1.0 (grammar.peggy → grammar.js with return-types plugin)
+- **Schema Validation**: Standard Schema v1 (@standard-schema/spec)
+- **Text Search**: BM25 ranking via @codemix/text-search workspace dependency
+- **Testing**: Vitest with istanbul coverage provider
+- **Build**: TypeScript 5.x composite projects, Node.js 18+, ESM output
 
 ## API Surface
 
-**Entry Point**: `parseQueryToSteps(queryString, options?)` returns `{ steps: readonly Step<any>[]; postprocess: (row: readonly unknown[]) => Record<string, unknown> }`. Validates mutations throw `ReadonlyGraphError(step.name)` when `options.readonly` true.
-
-**Core Exports** (from `./src/index.ts`):
-
-- `parse` (from grammar.js)
-- `astToSteps`, `anyAstToSteps`, `unionAstToSteps`, `multiStatementToSteps` (compilation)
-- `Step`, `ContainerStep` (execution runtime)
-- `Graph`, `Vertex`, `Edge`, `GraphSource`, `MutableGraphSource`, `EmptyGraphSource` (core engine)
-- `AsyncGraph`, `AsyncGraphConfig` (async transport)
-- `GraphSchema`, `VertexSchema`, `EdgeSchema`, `PropertySchema`, `IndexConfig` (schema types)
-- `GraphStorage`, `InMemoryGraphStorage`, `ElementId`, `StoredVertex`, `StoredEdge` (storage)
-- `Traversal`, `GraphTraversal`, `VertexTraversal`, `EdgeTraversal`, `TraversalPath` (fluent API)
-- `FunctionRegistry`, `functionRegistry`, `evaluateFunction`, `isBuiltinFunction`, `isAggregateFunction`, `functionArgExpectsPath` (function system)
-- `ProcedureRegistry`, `procedureRegistry`, `isBuiltinProcedure` (procedure system)
-- `QueryContext`, `DEFAULT_QUERY_CONTEXT_OPTIONS` (execution context)
-- All index classes and query planner functions from `./src/indexes/index.js`
-- Schema guide generators from `./src/generateSchemaGuide.js`
+index.ts exports parseQueryToSteps(queryString, options?) returning { steps, postprocess } with readonly safety enforced via MUTATION_STEP_NAMES Set containing "Create", "Set", "Delete", "Remove", "Merge", "Foreach". GraphTraversal class provides fluent entry points V(id?), E(id?), out(label?), in(label?), both(), has(key, value|fn), order().by(key, "asc"|"desc"), limit(n), union(...traversals). FunctionRegistry.register({ name, category, impl }) extends scalar/aggregate/list/temporal functions. ProcedureRegistry.register({ name, params, yields, impl }) adds schema introspection procedures (db.labels, db.relationshipTypes, dbms.procedures).
 
 ## Behavioral Contracts
 
-### Grammar Regex Patterns (grammar.js)
+**Element ID Format**: `Label:uuid` produced by Graph.generateElementId() via `${label}:${uuid}` template, parsed by GraphStorage.parseElementId() splitting on first colon only (handles "Label:uuid:extra" → ["Label", "uuid"]).
 
-```javascript
-peg$r0 = /^[a-zA-Z_]/; // identifier start
-peg$r1 = /^[a-zA-Z0-9_]/; // identifier continuation
-peg$r2 = /^[(.[{]/; // expression continuation check
-peg$r3 = /^[+\-]/; // additive operators
-peg$r4 = /^[%*\/]/; // multiplicative operators
-peg$r5 = /^["\\\n\r]/; // double-quote forbidden chars
-peg$r6 = /^['\\\n\r]/; // single-quote forbidden chars
-peg$r7 = /^[xX]/; // hex prefix
-peg$r8 = /^[0-9a-fA-F]/; // hex digits
-peg$r9 = /^[oO]/; // octal prefix
-peg$r10 = /^[0-7]/; // octal digits
-peg$r11 = /^[0-9]/; // decimal digits
-peg$r12 = /^[eE]/; // exponent marker
-peg$r13 = /^[^`]/; // backtick content (any char except backtick)
-peg$r14 = /^[ \t\n\r]/; // whitespace
-peg$r15 = /^[\n\r]/; // line breaks
-```
+**Regex Patterns** (from grammar.peggy/grammar.js):
 
-### Identifier Formats
+- Identifier start: `/^[a-zA-Z_]/`
+- Identifier part: `/^[a-zA-Z0-9_]/`
+- Hex integer: `0[xX][0-9a-fA-F]+`
+- Octal integer: `0[oO][0-7]+`
+- Scientific float: `sign? [0-9]+ "." [0-9]+ [eE] [+-]? [0-9]+`
+- Backtick content: `/^[^`]/` (escape via double backtick)
+- String double-quote forbidden: `/^["\\\n\r]/`
+- String single-quote forbidden: `/^['\\\n\r]/`
 
-- **Element ID**: Template literal `` `${TLabel}:${string}` ``; concrete format `Person:12345678-1234-1234-1234-123456789abc`; regex `/^Person:[0-9a-f-]+$/` in test assertions.
-- **Anonymous Variables**: Prefix `__anon_${counter}` starting at 0 (`astToSteps.ts`).
+**Path Quantifiers**: `*` (0..inf), `+` (1..inf), `*n` (exact n), `*n..m` (range n..m), `*..m` (0..m), `*n..` (n..inf), `{n,m}`, `{n,}`, `{,m}`, `{n}`.
 
-### Error Message Templates
+**Comparison Operators**: `=`, `!=`, `<>`, `<`, `<=`, `>`, `>=`, `=~` (regex match), `+=` (property merge).
 
-- `"ORDER BY, SKIP, and LIMIT require a RETURN clause"`
-- `"allShortestPaths() is not yet implemented. Use shortestPath() to find a single shortest path."`
-- `"Comma-separated MATCH patterns only support simple node patterns. Pattern ${i} contains edges which is not supported. Use separate MATCH clauses for patterns with relationships."`
-- `"REMOVE: Label removal is not supported. Labels are immutable. Cannot remove label '${item.label}' from '${item.variable}'."`
-- `"CREATE: Internal error - node variable not assigned"`
-- `"Cannot use aggregate (${aggregateItem.aggregate}) with ${mixedWith} in RETURN clause without GROUP BY"`
-- `"Non-aggregate return item '${itemDesc}' must appear in GROUP BY clause"`
-- `GraphConsistencyError: \`Vertex with id ${this[$StoredElement].inV} not found\``
-- `UniqueConstraintViolationError: \`Unique constraint violation: property '${property}' on label '${label}' already has value ${JSON.stringify(value)} (existing element: ${existingElementId})\``
-- `MaxIterationsExceededError: \`Maximum iterations (${limit}) exceeded in ${step}. Consider adding a LIMIT clause or increasing maxIterations.\``
-- `MemoryLimitExceededError: \`Collection size (${actual}) exceeds limit (${limit}). Consider adding a LIMIT clause or increasing maxCollectionSize.\``
+**Null Ordering**: PostgreSQL-style defaults: ASC → NULLS LAST, DESC → NULLS FIRST.
 
-### Magic Constants
+**Safety Limits**: DEFAULT_MAX_REPEATS = 1000, DEFAULT_MAX_COLLECTION_SIZE = 100000, DEFAULT_MAX_GROUPS = 100000. Exceeding throws MaxIterationsExceededError (message: `` `Maximum iterations (${limit}) exceeded in ${step}. Consider adding a LIMIT clause or increasing maxIterations.` ``) or MemoryLimitExceededError (message: `` `Collection size (${actual}) exceeds limit (${limit)}.` ``).
 
-- **Open-ended quantifier max depth**: `100` (`astToSteps.ts` `convertQuantifiedEdge`, `convertShortestPathPattern`, `convertParenthesizedPathPattern`).
-- **RangeStep end default**: `Number.MAX_SAFE_INTEGER` (`astToSteps.ts`).
-- **RepeatStep emitStart**: `effectiveMin > 0 ? effectiveMin : 1` (`astToSteps.ts`).
-- **RepeatStep emitInput**: `min === 0` determines whether to emit input path.
-- **Default Query Limits**: `maxIterations: 1000`, `maxCollectionSize: 100000` (`QueryContext.ts` `DEFAULT_QUERY_CONTEXT_OPTIONS`).
-- **BTree Binary Search**: `const mid = (low + high) >>> 1` (`BTreeIndex.ts`, unsigned right shift for overflow-safe division by 2).
-- **TCK Audit Timeout**: `30000`ms vitest invocation.
+**Error Message Templates** (verbatim):
 
-### Condition Tuple Format (Steps.ts)
+- `ORDER BY, SKIP, and LIMIT require a RETURN clause`
+- `allShortestPaths() is not yet implemented. Use shortestPath() to find a single shortest path.`
+- `Comma-separated MATCH patterns only support simple node patterns. Pattern ${i + 1} contains edges which is not supported.`
+- `REMOVE: Label removal is not supported. Labels are immutable. Cannot remove label '${item.label}' from '${item.variable}'.`
+- `Cannot use aggregate (${aggregateItem.aggregate}) with ${mixedWith} in RETURN clause without GROUP BY`
+- `Property '${key}' on label '${label}' failed validation: ${issues.join("; ")}`
+- `Unique constraint violation: property '${property}' on label '${label}' already has value ${JSON.stringify(value)} (existing element: ${existingElementId})`
+- `Query contains mutation step '${stepName}' but readonly mode is enabled`
 
-Step conditions use tagged tuple format:
+**Temporal ISO Regex Patterns**:
 
-- Equality: `["=", property, value]` or `["=", "@label", label]`
-- Comparison: `["<" | "<=" | ">" | ">=" | "!=", property, value]`
-- Logical: `["and" | "or" | "xor", ...Condition[]]`, `["not", Condition]`
-- Existence: `["exists", property]`, `["isNull" | "isNotNull", property]`
-- Collection: `["in", property, values[]]`
-- String: `["startsWith" | "endsWith" | "contains", property, string]`
-- Regex: `["=~", property, pattern]`
-- Expression wrapper: `["expr", operator, left, right]`
-- Label expressions: `["isLabeled", variable, LabelCondition]`, `["labelWildcard"]`
-
-### Operator Mapping (QueryPlanner.ts)
-
-```typescript
-OPERATOR_TO_OPERATION = {
-  "=": { operation: "equals", indexTypes: ["hash", "btree"] },
-  in: { operation: "in", indexTypes: ["hash"] },
-  "<": { operation: "lessThan", indexTypes: ["btree"] },
-  "<=": { operation: "lessThanOrEqual", indexTypes: ["btree"] },
-  ">": { operation: "greaterThan", indexTypes: ["btree"] },
-  ">=": { operation: "greaterThanOrEqual", indexTypes: ["btree"] },
-  startsWith: { operation: "startsWith", indexTypes: ["fulltext"] },
-  contains: { operation: "contains", indexTypes: ["fulltext"] },
-};
-```
-
-Excluded from indexing: `"=~"`, `"not"`, `"exists"`, `"isNull"`, `"isNotNull"`, `"and"`, `"or"`, `"xor"`.
-
-### Index Key Format
-
-- `IndexManager` uses `` `${label}.${property}` `` (e.g., `"Person.name"`).
-
-### Temporal Format Patterns
-
-- **Date**: `/^(\d{4})-(\d{2})-(\d{2})$/` → `YYYY-MM-DD`
-- **LocalTime**: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/` → `HH:MM:SS.nnnnnnnnn`
-- **Time**: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/` with offset
-- **LocalDateTime**: `/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/`
-- **DateTime**: `/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))?(?:\[([^\]]+)\])?$/` with optional timezone brackets
-- **Duration**: ISO 8601 `P[n]Y[n]M[n]DT[n]H[n]M[n]S` parsed via `/(-?\d+(?:\.\d+)?)(Y|M|W|D)/g` (date components) and `/(-?\d+(?:\.\d+)?)(H|M|S)/g` (time components).
-
-### Mutation Step Names
-
-Set of mutation steps triggering `ReadonlyGraphError`: `"Create"`, `"Set"`, `"Delete"`, `"Remove"`, `"Merge"`, `"Foreach"` (`index.ts` `MUTATION_STEP_NAMES`).
-
-### Type Order Precedence (Comparator.ts)
-
-`undefined(0) < null(1) < boolean(2) < number(3) < string(4) < object(5)`.
-
-### WeakMap Identity Contract
-
-`instantiateVertex` checks `#vertexIdentities.has(storedVertex)` before construction; `#vertexIdentities.set(storedVertex, instance)` ensures stable reference equality for same stored element.
-
-### Function Name Resolution
-
-Case-insensitive lookup via `.toLowerCase()` in both `FunctionRegistry` and `ProcedureRegistry`.
-
-### TCK Audit Heuristics
-
-- `DESIGN_EXCLUSIONS` patterns: `"unlabeled node"`, `"unlabeled nodes"`, `"multi-label"`, `"multi label"`, `"multiple labels"`, `"label removal"`, `"REMOVE n:Label"`, `"remove label"` → category `"design"`
-- `NOW_WORKING_PATTERNS` patterns: `"count(*)"`, `"count(\\*)"`, `"parameters not supported"`, `"parameter syntax"`, `"$param"`, `"RETURN-only"`, `"return-only"`, `"temporal"`, `"date()"`, `"time()"`, `"datetime()"`, `"duration()"`, `"ORDER BY alias"`, `"order by alias"`, `"toBoolean"`, `"startNode"`, `"endNode"`, `"id()"`, `"elementId()"`, `"type()"`, `"labels()"`, `"properties()"`, `"keys()"`, `"range()"`, `"reverse()"`, `"head()"`, `"tail()"`, `"last()"`, `"coalesce()"`, `"WITH...MATCH"`, `"named path"` → category `"now_working"`
+- Date: `/^(\d{4})-(\d{2})-(\d{2})$/`
+- LocalTime: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/`
+- Time: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/`
+- DateTime: `/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))?(?:\[([^\]]+)\])?$/`
+- Duration parsing: components extracted via `/(-?\d+(?:\.\d+)?)(Y|M|W|D)/g` and `/(-?\d+(?:\.\d+)?)(H|M|S)/g`
 
 ## Reproduction-Critical Constants
 
-- **Grammar documentation and query examples**: [src/generateSchemaGuide.annex.sum](./src/generateSchemaGuide.annex.sum) — Full query language specification, 15+ complete query examples, pattern matching syntax, schema-customized documentation templates.
+- Package dependency manifest and script definitions: [package.annex.sum](./package.annex.sum)
+- Schema guide prompt templates for LLM documentation generation: [src/generateSchemaGuide.annex.sum](./src/generateSchemaGuide.annex.sum)

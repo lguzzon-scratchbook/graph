@@ -2,42 +2,22 @@
 
 # packages
 
-Workspace packages directory housing publishable TypeScript packages with shared compiler configuration. Contains a Cypher-compatible graph database, text search utilities, and Yjs CRDT storage integration.
+Monorepo workspace containing three TypeScript packages: `graph` (Cypher-compatible property graph database), `text-search` (BM25/tokenization utilities), and `y-graph-storage` (Yjs CRDT persistence layer). Shared TypeScript configuration enforces ES2024, NodeNext, strict mode, and composite project references enabling cross-package dependencies.
 
 ## Contents
 
-### Configuration
-
-- [tsconfig-common.json](./tsconfig-common.json) - Shared compiler configuration enforcing ES2024 target, NodeNext module resolution, strict type checking with noUncheckedIndexedAccess, declaration emit, and sourceMap generation.
+- [tsconfig-common.json](./tsconfig-common.json) — Workspace-wide TypeScript configuration. Targets ES2024, NodeNext module resolution, strict mode with `noUncheckedIndexedAccess`, declaration maps, source maps. Extended by all package-level tsconfig.json files.
 
 ## Subdirectories
 
-- [graph/](./graph/) - Cypher-compatible graph database with Peggy grammar parsing, AST-to-traversal compilation, BTree/FullText/Hash indexes, and TCK compliance test suite covering clauses, expressions, and use cases.
-- [text-search/](./text-search/) - Text search utilities exporting tokenizer, stemmer, and matcher for fuzzy string operations.
-- [y-graph-storage/](./y-graph-storage/) - Yjs CRDT integration for @codemix/graph providing YGraph, YGraphStorage, LiveQuery reactive traversal, and ZodYTypes schema validation. Detailed architecture documentation in [y-graph-storage/AGENTS.md](./y-graph-storage/AGENTS.md).
+- [graph/](./graph/) — In-memory property graph database with Peggy-generated Cypher parser, Gremlin-style traversals, pluggable storage (InMemoryGraphStorage, AsyncGraph), and hash/btree/fulltext indexing. Consumes `@codemix/text-search` for BM25 ranking. See [graph/AGENTS.md](./graph/AGENTS.md) for architecture details.
+- [text-search/](./text-search/) — Full-text search primitives: `tokenizer.ts` (word boundary segmentation), `stemmer.ts` (Porter stemmer), `matcher.ts` (BM25 scoring). Entry point `index.ts` exports these for `@codemix/graph` FullTextIndex consumption.
+- [y-graph-storage/](./y-graph-storage/) — Yjs-based CRDT storage backend. `YGraphStorage.ts` implements graph persistence over Y.Doc, `LazyPropertyDictionary.ts` handles sparse property encoding, `ZodYTypes.ts` validates Yjs data structures. Entry `index.ts` exports YGraphStorage adapter.
 
-## Stack
+## Workspace Structure
 
-- **pnpm workspace** - Monorepo package management (root pnpm-workspace.yaml defines packages/\* glob pattern)
-- **TypeScript** - ES2024 target, NodeNext module resolution, strict mode enabled via [tsconfig-common.json](./tsconfig-common.json)
-- **Vitest** - Test runner with 20000ms timeout and globals enabled (pattern observed in y-graph-storage/vitest.config.ts)
-- **Peggy** - Parser generator for grammar.peggy files (present in graph/src/grammar.peggy)
+pnpm workspace defined at `../pnpm-workspace.yaml`. Package manifests declare `"@codemix/text-search": "workspace:^"` and `"@codemix/y-graph-storage": "workspace:^"` dependencies. `tsconfig-common.json` reference paths resolve via `../tsconfig-common.json` from package subdirectories.
 
-## Configuration
+## Cross-Package API Surface
 
-[tsconfig-common.json](./tsconfig-common.json) specifies:
-
-- `"target": "ES2024"` - Modern JavaScript runtime features
-- `"module": "NodeNext"` - Native ESM output with Node.js resolution
-- `"moduleResolution": "NodeNext"` - Aligns with module setting for proper ESM support
-- `"strict": true` - Maximum type safety
-- `"noUncheckedIndexedAccess": true` - Undefined checks required for array/object index access
-- `"declaration": true` and `"sourceMap": true` - Distribution artifacts for debugging
-
-Individual packages extend via `"extends": "packages/tsconfig-common.json"` path reference in their local tsconfig.json files.
-
-## Patterns
-
-- **Shared Configuration Inheritance**: All packages reference [tsconfig-common.json](./tsconfig-common.json) for consistent compiler strictness and module resolution.
-- **Workspace Internal Dependencies**: Packages declare sibling dependencies using workspace protocol (e.g., `"@codemix/graph": "workspace:*"` pattern observed in y-graph-storage dependencies).
-- **Barrel Export Index Files**: Each package consolidates public API through src/index.ts re-exporting main classes (YGraph, YGraphStorage, ZodYTypes pattern in y-graph-storage/index.ts).
+`graph` FullTextIndex instantiates `createBM25Matcher` from `text-search`. `y-graph-storage` exports `YGraphStorage` class implementing GraphStorage interface consumed by `graph` consumers needing collaborative/undo-redo capabilities.

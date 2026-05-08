@@ -2,236 +2,137 @@
 
 # test
 
-Graph query engine test suite. 87 test files validating Cypher-like parser, AST transformation, traversal execution, and storage layers against Vitest assertions. Covers core Graph/Vertex/Edge operations, Gremlin-style traversals, openCypher v9/M23 grammar compatibility, and index management. Organized by functional domain with shared infrastructure in `testHelpers.ts`.
+Comprehensive Vitest test suite for the Codemix graph query engine, validating Cypher-compatible grammar parsing, AST-to-step compilation, traversal execution, and TCK compliance across 87 test files. Tests cover the full pipeline from `parse()` through `astToSteps()` to `createTraverser().traverse()`, exercising vertex/edge storage via `InMemoryGraphStorage`, property validation through `StandardSchemaV1`, and query context isolation with `QueryContext`.
 
 ## Contents
 
-### Core Graph Operations
+### Core Graph & Storage
 
-[Graph.test.ts](./Graph.test.ts) — Graph, Vertex, Edge constructors; ID generation `{label}:{uuid}`; `validateProperties` toggle; error hierarchies VertexNotFoundError, EdgeNotFoundError, GraphConsistencyError.
+- [Graph.test.ts](./Graph.test.ts) — `Graph.addVertex()`, `addEdge()`, `generateElementId()` producing `Label:uuid` pattern; `VertexNotFoundError` on missing IDs; `validateProperties` flag controlling `StandardSchemaV1` enforcement.
+- [GraphStorage.test.ts](./GraphStorage.test.ts) — `InMemoryGraphStorage.addVertex()`, `deleteVertex()` cascade-deleting edges; `parseElementId()` splitting on first colon only; bidirectional adjacency indexes via `incomingEdges` and `outgoingEdges` Maps.
+- [AsyncGraph.test.ts](./AsyncGraph.test.ts) — `AsyncGraph.updateProperty()` triggering push updates individually (not `Object.assign`); `Date` serialization to ISO strings via `toJSON()` on `TraversalPath`/`Vertex`.
 
-[GraphStorage.test.ts](./GraphStorage.test.ts) — InMemoryGraphStorage methods; `parseElementId`/`getLabelFromElementId` split on first colon; bidirectional edge indexing; cascade deletion on vertex removal.
+### Traversal & Path Operations
 
-[AsyncGraph.test.ts](./AsyncGraph.test.ts) — AsyncGraph serialization, cloning, property updates; Date ISO string handling via `toJSON()`; push updates through `updateProperty`.
+- [Traversals.test.ts](./Traversals.test.ts) — `GraphTraversal.repeat().times().emit()`, `union()`, `intersect()`, `select("all:label")` aggregation, `order().by(key, "desc")` sorting.
+- [EdgeTraversal.test.ts](./EdgeTraversal.test.ts) — Gremlin-style edge navigation: `outV()` returning source vertices, `inV()` targets, `bothV()` endpoints, `otherV()` opposite labeled source; `order().by("strength", "desc")` on weighted edges.
+- [ComplexTraversals.test.ts](./ComplexTraversals.test.ts) — `repeat().until()` termination strategies; `dedup()` on cyclic graphs; 100-vertex chain performance <1000ms.
+- [ShortestPath.test.ts](./ShortestPath.test.ts) — BFS unweighted vs Dijkstra weighted via `weightedBy("weight")`; `maxDepth(0)` zero-length paths; negative weights skipped defaulting to 1.
+- [ValueTraversal.test.ts](./ValueTraversal.test.ts) — `values()` materialization returning `Vertex[]` vs `TraversalPath[]`; `unfold()` expanding one level per call; `dedup()` after `union()` reducing duplicates.
+- [OrderTraversal.test.ts](./OrderTraversal.test.ts) — `.order().by("age", "asc").by("name", "desc")` multi-property sorting; pagination via `limit(3)`, `skip(2)`, `range(1, 4)`.
+- [PropertyExtraction.test.ts](./PropertyExtraction.test.ts) — `properties("name", "ref")` returning filtered property bundles; `map()` with conditional type narrowing via `path.value.label === "Person"`.
 
-[Exceptions.test.ts](./Exceptions.test.ts) — Error class constructors: GraphError, MaxIterationsExceededError, MemoryLimitExceededError, PropertyTypeError, ReadonlyGraphError; message format contracts; context field exposure.
+### Query Execution Pipeline
 
-[ErrorHandling.test.ts](./ErrorHandling.test.ts) — Resource limits QueryContext.maxIterations default 1000, maxCollectionSize default 100000; MaxIterationsExceededError at iteration 1000; MemoryLimitExceededError in CollectStep/DeleteStep.
+- [queryExecution.test.ts](./queryExecution.test.ts) — End-to-end `executeQuery()` pipeline: `MATCH` → `WHERE` → `RETURN` with `COUNT()`, `DISTINCT`, `ORDER BY`, `SKIP`/`LIMIT`; cross-label `union()` deduplication.
+- [astToSteps.test.ts](./astToSteps.test.ts) — `astToSteps(ast: Query)` generating `FetchVerticesStep`, `EdgeStep`, `FilterElementsStep`, `RepeatStep`, `RangeStep`, `OrderStep`, `CountStep`, `DedupStep`.
+- [Steps.test.ts](./Steps.test.ts) — Step serialization via `stringifySteps()` and `createStepsFromJSON()` roundtrip; `DedupStep` deduplication preserving first occurrence of primitives, arrays, and `TraversalPath` instances.
+- [QueryContext.test.ts](./QueryContext.test.ts) — Concurrency isolation via `withParams()` immutable copies; parameter resolution via `getParam()`, `hasParam()`; graph scoping preventing cross-graph contamination in interleaved traversals.
+- [index.test.ts](./index.test.ts) — `parseQueryToSteps()` postprocessor transforming raw rows into aliased objects; `ReadonlyGraphError` throwing on `CREATE`, `SET`, `DELETE` when `readonly: true`.
 
-### Traversal & Query Execution
+### Grammar & Parser
 
-[Traversals.test.ts](./Traversals.test.ts) — Gremlin-like DSL: GraphTraversal.V(), outE(), as(), select(), union(), intersect(), order().by(), repeat().until().times(), dedup(), count(), map(), values(); TraversalPath.with(), get(), property().
+- [grammar.test.ts](./grammar.test.ts) — `parse()` producing `Query` with `NodePattern` (`variable`, `labels`, `properties`), `EdgePattern` (`direction: "out"|"in"|"both"`, `quantifier`), `@-prefixed` metadata identifiers like `@id` and `@type`.
+- [cypher-comparison.test.ts](./cypher-comparison.test.ts) — openCypher v9/M23 compatibility matrix: SUPPORTED (MATCH, WHERE, RETURN), NOT SUPPORTED (LOAD CSV, CREATE INDEX), CODEMIX EXTENSION (`n.@id`, postfix `EXISTS`).
+- [backtickIdentifiers.test.ts](./backtickIdentifiers.test.ts) — Backtick-quoted identifiers `` `my node` ``, `` `MATCH` `` (reserved words), `` `prop-name` `` (special chars); escape resolution via consecutive backticks collapsing to single literal.
+- [numericLiterals.test.ts](./numericLiterals.test.ts) — Hexadecimal (`0x1a`), octal (`0o755`), scientific (`1e10`), negative unary expressions; property map literals `{value: 0xFF}`.
 
-[ComplexTraversals.test.ts](./ComplexTraversals.test.ts) — Repeat terminators: times(0..10), until(fn) with has predicates, emit() intermediate results; nested repeat composition; step labeling as("start")/as("hop")/as("end"); bidirectional both(); 100-vertex chain performance <1000ms.
+### Expressions & Operators
 
-[EdgeTraversal.test.ts](./EdgeTraversal.test.ts) — Edge navigation: outV(), inV(), bothV(), otherV(); filtering hasLabel(), has(); step labeling as(), select("all:edge") nested arrays; union(), intersect(), dedup(); pagination limit(), skip(), range(); aggregation count(); value extraction map(), property(), properties(); ordering order().by().
+- [arithmetic.test.ts](./arithmetic.test.ts) — Operator precedence: `+`/`-` < `*`/`/`/`%` < `^` < unary `+`/`-`; `PropertyAccess` and `ParameterRef` in arithmetic; division by zero returning `Infinity`.
+- [Comparator.test.ts](./Comparator.test.ts) — `compare()` total ordering with type precedence: `undefined` < `null` < `boolean` < `number` < `string` < `object`; `compare(NaN, NaN)` returns `NaN`.
+- [stringConcatenation.test.ts](./stringConcatenation.test.ts) — `+` operator string concatenation with type coercion: numbers and booleans coerce to strings; null becomes empty string.
+- [stringPredicatesAndReturnAll.test.ts](./stringPredicatesAndReturnAll.test.ts) — `STARTS WITH`, `ENDS WITH`, `CONTAINS` predicates; `!=` and `<>` inequality operators; `RETURN *` syntax returning all bound variables.
+- [caseExpression.test.ts](./caseExpression.test.ts) — Simple `CASE n.status WHEN 'active' THEN 1 END` and searched `CASE WHEN n.age > 60 THEN 'senior' END`; first-match wins semantics.
 
-[OrderTraversal.test.ts](./OrderTraversal.test.ts) — Vertex sorting: order().by(property, "asc"/"desc"); multi-property chaining .by("age").by("name"); filter integration has("age", ">", 30); pagination limit(3), skip(2), range(1,4); repeat integration; performance 100 vertices <500ms.
+### Data Types & Temporal
 
-[PropertyExtraction.test.ts](./PropertyExtraction.test.ts) — properties() method: no args returns full objects, specific keys returns subsets; chaining with hasLabel(), has(), out(), dedup(), union(), intersect(); map() tuple extraction; select() aliasing; aggregation count(), reduce(); conditional type narrowing by label.
+- [date-temporal.test.ts](./date-temporal.test.ts) — `DateValue.fromString()` parsing `YYYY-MM-DD`; `LocalTimeValue` with nanosecond precision; `DateTimeValue` with IANA timezone brackets `[Europe/Stockholm]`.
+- [duration-temporal.test.ts](./duration-temporal.test.ts) — ISO 8601 duration parsing `P1Y2M3DT1H30M`; arithmetic `date('1984-10-11') + duration('P1D')`; month-end clamping logic (Jan 31 + 1 month = Feb 28/29).
 
-[ValueTraversal.test.ts](./ValueTraversal.test.ts) — values() materialization returning Vertex[] or primitives; unfold() one-level expansion per call, triple unfold for [[[1,2]],[[3,4]]] → [1,2,3,4]; select("all:label") collects all bindings; performance 1000-element unfold <100ms.
+### Advanced Query Features
 
-[ShortestPath.test.ts](./ShortestPath.test.ts) — BFS unweighted, Dijkstra weighted via GraphTraversal.shortestPath().to(targetId).through(labels).direction("out"/"in"/"both").maxDepth(n).weightedBy("weight").values(); query syntax `shortestPath((a:Person)-[:knows*]->(b:Person))`; 100-vertex chain <1000ms.
+- [listComprehension.test.ts](./listComprehension.test.ts) — `[x IN list WHERE cond | expr]` syntax; vacuous truth for `ALL` on empty lists; outer variable capture in filter and projection expressions.
+- [patternComprehension.test.ts](./patternComprehension.test.ts) — `[(a)-[:KNOWS]->(b) | b.name]` extracting neighbor names; `size()` wrapping for existential checks; parameter binding via `QueryContext`.
+- [quantifierExpression.test.ts](./quantifierExpression.test.ts) — `ALL`, `ANY`, `NONE`, `SINGLE` quantifiers with list iteration; `SINGLE` requiring exactly one match; parameter injection for thresholds.
+- [reduceExpression.test.ts](./reduceExpression.test.ts) — `REDUCE(s = 0, x IN [1,2,3] | s + x)` aggregation; accumulator shadowing vertex properties; nested REDUCE expressions.
+- [unwind.test.ts](./unwind.test.ts) — `UNWIND [1,2,3] AS x` Cartesian expansion; empty list UNWIND producing zero rows; `UnwindStep` with `config.expression` discriminating literal/property/parameter.
+- [union.test.ts](./union.test.ts) — `UNION` deduplication vs `UNION ALL` preserving duplicates; `QueryUnion` step handling multiple branch pipelines; parameter binding per branch via `QueryContext`.
+- [withClause.test.ts](./withClause.test.ts) — `WITH` passthrough, `DISTINCT`, `ORDER BY`, `SKIP`/`LIMIT`, aggregates `COUNT()`, `COLLECT()`, `SUM()`; `WithStep` with `config.items` array.
 
-[Steps.test.ts](./Steps.test.ts) — Step serialization: stringifySteps outputs class names; createStepsFromJSON roundtrip; DedupStep deduplicates primitives by value, objects via JSON, TraversalPath by internal value; RepeatStep pipeline integration.
+### Mutation Operations
 
-[QueryContext.test.ts](./QueryContext.test.ts) — Concurrency isolation: manual interleaving, round-robin 10-iterator scheduling, async contention with setTimeout delays; graph scoping guarantees separate Graph instances don't contaminate; withParams() shallow merge immutability; withOptions() limit overrides; stress test 100 parallel contexts.
+- [create.test.ts](./create.test.ts) — `CREATE (u:User {name: 'Alice'})` generating `CreateStep` with `config.vertices`; anonymous nodes with auto-generated IDs.
+- [writeOperations.test.ts](./writeOperations.test.ts) — `DELETE` vs `DETACH DELETE` throwing `/connected edges/` when edges present; `REMOVE` deleting properties; `MERGE` with `ON CREATE SET` and `ON MATCH SET` conditional execution.
+- [setEnhancements.test.ts](./setEnhancements.test.ts) — `SET n = {props}` replace-all vs `SET n += {props}` merge; parameter-driven updates via `QueryContext`.
+- [mergeEnhancements.test.ts](./mergeEnhancements.test.ts) — `MERGE` with parameter properties `$name`, `$year`; relationship creation with `{since: $year}`.
 
-[RepeatStep.test.ts](./RepeatStep.test.ts) — Recursive traversal through IsA edges to parent Concepts; aggregates HasProperty edges via select("concept", "property").
+### Schema & Validation
 
-### Query Language Core
+- [standardSchema.test.ts](./standardSchema.test.ts) — `parsePropertyValue()` with `StandardSchemaV1` validators; `PropertyTypeError` on validation failures; `AsyncValidationError` for async validators.
+- [generateSchemaGuide.test.ts](./generateSchemaGuide.test.ts) — `generateSchemaGuide()` and `generateCompactSchemaGuide()` producing LLM-compatible markdown; ID format documentation `<EntityName>:<uuid>`.
+- [indexes.test.ts](./indexes.test.ts) — `HashIndex` equality lookups, `BTreeIndex` range queries (`lookupGreaterThan`, `lookupRange`), `FullTextIndex` text search; `IndexManager` lifecycle hooks on `addVertex`, `deleteVertex`, `updateProperty`.
+- [uniqueIndexes.test.ts](./uniqueIndexes.test.ts) — `UniqueConstraintViolationError` on duplicate values; `lookupUnique()` retrieving element ID; `MERGE` using unique indexes for find-or-create semantics.
 
-[grammar.test.ts](./grammar.test.ts) — Parser validation: NodePattern variable/labels/properties, EdgePattern direction/variable/labels/quantifier (*2, *1..3), Pattern element alternation, WHERE conditions (PropertyCondition, ExistsCondition, AndCondition, OrCondition), RETURN aggregates (COUNT, SUM), ORDER BY, SKIP/LIMIT, @-prefixed metadata properties, case-insensitive keywords, comment skipping.
+### Error Handling
 
-[astToSteps.test.ts](./astToSteps.test.ts) — AST→Step conversion: FetchVerticesStep, EdgeStep, VertexStep, FilterElementsStep, RepeatStep wrapping variable-length patterns, RangeStep for SKIP/LIMIT, OrderStep, CountStep, DedupStep, SelectStep, ValuesStep; dumpSteps() snapshot format "N. StepType(config) as label".
-
-[queryExecution.test.ts](./queryExecution.test.ts) — End-to-end pipeline: executeQuery() chains parse → astToSteps → createTraverser → traverse; validates MATCH, WHERE, edge traversal, aggregation, pagination, boolean logic, DISTINCT deduplication, labels() function.
-
-[cypher-comparison.test.ts](./cypher-comparison.test.ts) — openCypher v9/M23 compatibility matrix: SUPPORTED (MATCH, RETURN, WHERE, CREATE, ORDER BY, aggregates, functions), NOT SUPPORTED (LOAD CSV, CREATE INDEX, subqueries), PARTIAL (FOREACH, list comprehensions), DIFFERENT (ORDER BY null ordering PostgreSQL-style), CODEMIX EXTENSION (@-prefixed properties, postfix EXISTS).
-
-[cypher-syntax-check.test.ts](./cypher-syntax-check.test.ts) — Extended patterns: WITH clause variable passing, nested property objects `{schema: {type: "string"}}`, WHERE NOT pattern negation, multiple MATCH before WITH.
-
-### Language Features
-
-[arithmetic.test.ts](./arithmetic.test.ts) — Expression operators +, -, _, /, %, ^; unary +/-; precedence (_ before +, ^ right-associative); PropertyAccess, ParameterRef; division by zero returns Infinity; NaN propagation; missing properties return empty results.
-
-[backtickIdentifiers.test.ts](./backtickIdentifiers.test.ts) — Backtick-quoted identifiers: `` `my node` `` (spaces), `` `MATCH` `` (reserved words), `` `user-name` `` (dashes), unicode `` `用户` ``; escape consecutive backticks collapse to literal; parameters `$`param name``; MERGE SET with backtick properties.
-
-[callProcedure.test.ts](./callProcedure.test.ts) — CALL procedure syntax: `CALL db.labels()`, `YIELD` aliases, qualified names `db.schema.nodeTypeProperties`; ProcedureRegistry case-insensitive lookup; built-in procedures db.labels, db.relationshipTypes, db.propertyKeys, dbms.procedures; custom registration register(name, description, params, yields, impl).
-
-[caseExpression.test.ts](./caseExpression.test.ts) — SQL-style CASE: simple `CASE n.status WHEN 'active' THEN 1`, searched `CASE WHEN n.age > 60 THEN 'senior'`, nested CASE, CASE in arithmetic `n.score + CASE WHEN n.bonus THEN 10 ELSE 0 END`.
-
-[count-star.test.ts](./count-star.test.ts) — `count(*)` aggregate parsing and execution; variable: "\*", aggregate: "COUNT"; returns [N] for N vertices.
-
-[count-support.test.ts](./count-support.test.ts) — COUNT, SUM, AS aliases, GROUP BY, labels() function; multi-label GROUP BY returns [label, count] tuples; parseQueryToSteps returns {steps, postprocess} with aliased object transformation.
-
-[create.test.ts](./create.test.ts) — CREATE clause: `CREATE (u:User)`, properties `{key: value}`, multiple patterns comma-separated; CreateStep with config.vertices; executes to Vertex instances.
-
-[date-temporal.test.ts](./date-temporal.test.ts) — Temporal classes: DateValue.fromString("YYYY-MM-DD"), LocalTimeValue.fromString("HH:MM:SS.nnn"), TimeValue with offset, LocalDateTimeValue, DateTimeValue with timezone; query functions date(), localtime(), time(), localdatetime(), datetime(); ISO week calculation; accessors .year, .month, .day, .hour, .offset.
-
-[duration-temporal.test.ts](./duration-temporal.test.ts) — DurationValue ISO 8601 parsing: P1Y2M3D, PT1H30M, P2W; arithmetic plus(), minus(), multiply(scalar), divide(scalar); temporal integration addDuration(), subtractDuration() with month-end clamping; query functions duration(), duration.between(), duration.inMonths/Days/Seconds.
-
-[dynamicPropertyAccess.test.ts](./dynamicPropertyAccess.test.ts) — Bracket notation `n['prop']`, `n["name"]`, `n['full name']` (spaces); DynamicPropertyAccess AST node; execution with =, >, IS NULL, AND/OR; distinction from ListIndexExpression `n.items[0]`.
-
-[existsSubquery.test.ts](./existsSubquery.test.ts) — EXISTS { pattern } subquery; AST ExistsSubquery wrapped in ExpressionCondition; execution against Person/Movie/City graph; outgoing/incoming/bidirectional patterns; parameter binding; NOT EXISTS negation.
-
-[functionInvocation.test.ts](./functionInvocation.test.ts) — FunctionRegistry operations: has(), get(), isAggregateFunction(), isBuiltinFunction(); scalar evaluation toLower, toUpper, trim, abs, sqrt, sin; aggregate count, sum, avg, min, max, collect; evaluateFunction() with path context; error contracts "Unknown function", argument count validation.
-
-[graphPatternQuantifiers.test.ts](./graphPatternQuantifiers.test.ts) — Variable-length edge quantifiers: `[+]` (min 1), `[{2}]` exact, `[{1,3}]` range, `[{2,}]` open-ended, `[*..3]` open start; parser equivalence `[*]` = `[+]`, `[*2]` = `[{2}]`; execution on 5-node chain validates hop constraints.
-
-[isLabeled.test.ts](./isLabeled.test.ts) — IS LABELED predicate: `n IS :Person`, `n IS :Person|Admin` (LabelOr), `n IS :!Person` (LabelNot), `n IS NOT :Person`; execution filters by label expressions; backtick quoting `:``Person```.
-
-[keywordAsIdentifier.test.ts](./keywordAsIdentifier.test.ts) — Reserved words as identifiers: labels, type, count, match, sum function in aliases and variable references; pattern binding restrictions (cannot bind variables named `labels`); backtick escaping works.
-
-[labelExpressions.test.ts](./labelExpressions.test.ts) — Advanced label operators: `|` (OR), `&` (AND), `!` (NOT), `%` (wildcard); precedence NOT > AND > OR; parentheses grouping; backwards compatibility `:Person:Admin` array syntax.
-
-[listComprehension.test.ts](./listComprehension.test.ts) — `[x IN list WHERE cond | expr]` syntax; ListComprehension AST node with filterCondition and projection; execution with property arrays, literal lists, outer scope capture, parameter binding, nesting.
-
-[listOperations.test.ts](./listOperations.test.ts) — List indexing `n.items[0]`, `[-1]` last element; slicing `[start..end]`, `[..end]`, `[start..]`; string-as-list char access; parameter binding for indices; null-safety for missing properties.
-
-[mapProjection.test.ts](./mapProjection.test.ts) — Cypher map projection `n{.name, .age}`, `n{.*}` (all properties), `n{status: 'active'}` (literal entry), `n{m}` (variable selector); bracket notation access `['key']`; nested expressions in literals; backtick identifiers.
-
-[mergeEnhancements.test.ts](./mergeEnhancements.test.ts) — MERGE with parameters: `$name`, `$year` in NodePattern and edge properties; ON CREATE SET, ON MATCH SET; exact property map matching for relationships; multiple parameters.
-
-[new-features.test.ts](./new-features.test.ts) — `type()` function returns single label string (vs labels() array); multi-aggregate RETURN without GROUP BY (COUNT/SUM/AVG); semicolon-separated multi-statement queries with \_statementIndex tracking.
-
-[newFeatures.test.ts](./newFeatures.test.ts) — Edge property filters `{weight: 10}`, IN operator `status IN ["active", "pending"]`, IS NULL/IS NOT NULL, NOT operator negation; Fluent API hasIn(), isNull(), isNotNull(), not().
-
-[newFeaturesAggrXorVarLen.test.ts](./newFeaturesAggrXorVarLen.test.ts) — Aggregates SUM, AVG, MIN, MAX, COLLECT; XOR logical operator with AND precedence; variable-length path quantifiers `[*]`, `[*n..m]`, `[*n..]` execution.
-
-[newQuerySupport.test.ts](./newQuerySupport.test.ts) — exists() functional syntax, anonymous CREATE nodes `(:Label)`, multiple CREATE clauses merging, comma-separated MATCH patterns (Cartesian product).
-
-[numericLiterals.test.ts](./numericLiterals.test.ts) — Hexadecimal `0x1a`, octal `0o755`, scientific `1e10`, negative unary expressions; property map literals with numeric formats.
-
-[offsetKeyword.test.ts](./offsetKeyword.test.ts) — OFFSET as SKIP synonym; case-insensitive; combines with LIMIT, ORDER BY; execution skips first N results.
-
-[optionalMatch.test.ts](./optionalMatch.test.ts) — OPTIONAL MATCH clause; `ast.matches[].optional: true`; OptionalMatchStep; yields null bindings for unmatched patterns; Cartesian product behavior.
-
-[orderByAndForeach.test.ts](./orderByAndForeach.test.ts) — ORDER BY ASCENDING/DESCENDING keywords, NULLS FIRST/LAST; SET clause mutations; FOREACH clause `FOREACH (var IN list | operations)` with SET and MATCH nesting.
-
-[parameters.test.ts](./parameters.test.ts) — `$param` syntax; ParameterRef AST node; global state setQueryParams(), clearQueryParams(), getQueryParams(); execution binding for WHERE filters and SET assignments.
-
-[parenthesizedPathPatterns.test.ts](./parenthesizedPathPatterns.test.ts) — `(((b)-[r]->(c)))` grouping, inline WHERE `(((b)-[r]->(c)) WHERE r.weight > 10)`, quantifiers `)+`, `){2,5}`; execution on Person/Node graph with KNOWS edges.
-
-[pathFunctions.test.ts](./pathFunctions.test.ts) — nodes(), relationships(), length() functions; TraversalPath depth caching O(1) via incremental construction; 1000-level path depth 10000 accesses <100ms.
-
-[patternComprehension.test.ts](./patternComprehension.test.ts) — `[(a)-[:KNOWS]->(b) | b.name]`; PatternComprehension with optional pathVariable and filterCondition; size() wrapper for counting; social network and cinema database fixtures.
-
-[quantifierExpression.test.ts](./quantifierExpression.test.ts) — ALL, ANY, NONE, SINGLE list quantifiers; vacuous truth (ALL/NONE true on empty, ANY/SINGLE false); outer scope variable access in conditions; parameter binding.
-
-[range-reverse.test.ts](./range-reverse.test.ts) — range() function: range(0,5), range(0,10,2), range(5,0,-1); reverse() function for arrays and strings; UNWIND integration.
-
-[reduceExpression.test.ts](./reduceExpression.test.ts) — `REDUCE(total = 0, x IN list | total + x)`; accumulator shadowing protection; string concatenation; nested REDUCE; parameter binding for init and list.
-
-[relationship-type-alternation.test.ts](./relationship-type-alternation.test.ts) — `[:KNOWS|FOLLOWS]` alternation parsing; EdgePattern.labels array; execution with undirected `-[:T1|T2]-`; variable binding `[r:X|Y]`.
-
-[return-only.test.ts](./return-only.test.ts) — Expression-only queries without MATCH: `RETURN 1 + 2`, arithmetic, functions, list literals; parse() yields Query with empty matches.
-
-[setEnhancements.test.ts](./setEnhancements.test.ts) — `SET n = {props}` replace-all, `SET n += {props}` merge properties, parameter-driven updates `$props`; SetAllProperties, SetAddProperties AST nodes.
-
-[setJsonObjectValues.test.ts](./setJsonObjectValues.test.ts) — JSON object literals in SET: `{type: "string", format: "email"}`, nested objects, arrays, backtick keys, double-quoted keys; deep property access filtering.
-
-[standaloneMutations.test.ts](./standaloneMutations.test.ts) — CREATE/MERGE without MATCH; StartStep insertion; sequential CREATE calls accumulate; idempotent MERGE; error on unbound DELETE/SET/REMOVE.
-
-[stringConcatenation.test.ts](./stringConcatenation.test.ts) — `+` operator string concatenation; coercion of numbers/booleans to strings; property-property and property-literal concatenation; null becomes empty string.
-
-[stringPredicateTraversals.test.ts](./stringPredicateTraversals.test.ts) — GraphTraversal string methods: startsWith(), endsWith(), containing(), matches(); EdgeTraversal filter chaining.
-
-[stringPredicatesAndReturnAll.test.ts](./stringPredicatesAndReturnAll.test.ts) — Cypher STARTS WITH, ENDS WITH, CONTAINS, regex `=~`; inequality `<>` and `!=`; RETURN \* syntax returning all variables.
-
-[undirected-self-loop.test.ts](./undirected-self-loop.test.ts) — Self-loop `CREATE (a:A)-[:LOOP]->(a)`; undirected pattern `(a)-[r]-(b)` matches both directions; variable reuse `(n)-[r]-(n)`.
-
-[union.test.ts](./union.test.ts) — UNION/UNION ALL; UnionQuery AST type with `all: boolean` and `queries` array; QueryUnion/QueryUnionAll steps; deduplication by value equality; parameter binding across branches.
-
-[uniqueIndexes.test.ts](./uniqueIndexes.test.ts) — Unique constraint enforcement via IndexManager; UniqueConstraintViolationError with label, property, value, existingElementId; lookupUnique(), findByUniqueProperties(); MERGE optimization.
-
-[unlabeled-nodes.test.ts](./unlabeled-nodes.test.ts) — Anonymous nodes `CREATE ()`, `()-[:R]->()`; CreateNodePattern with undefined variable and empty labels; CreateVariableRef for chain patterns; execution returns mixed labeled/unlabeled nodes.
-
-[unwind.test.ts](./unwind.test.ts) — UNWIND clause: literal lists, property access, parameters, empty lists yield zero rows; UnwindStep config with alias and expression; Cartesian multiplication behavior.
-
-[userQueries.test.ts](./userQueries.test.ts) — Operations without RETURN: standalone CREATE, MATCH+CREATE relationships, DELETE, SET, REMOVE, MERGE; all return zero results but mutate graph; ORDER BY/SKIP/LIMIT without RETURN throws.
-
-[with-match-chaining.test.ts](./with-match-chaining.test.ts) — WITH...MATCH clause chaining: `MATCH (a:A) WITH a MATCH (b:B)`; variable forwarding, aliasing, filtering before second MATCH, Cartesian products, multiple WITH chains.
-
-[withClause.test.ts](./withClause.test.ts) — WITH clause: DISTINCT, aliasing, aggregates (COUNT, COLLECT, SUM), ORDER BY, SKIP/LIMIT, WHERE filtering; WithStep config with items array; pipeline result transformation.
-
-[writeOperations.test.ts](./writeOperations.test.ts) — DELETE (single/multiple variables, DETACH), REMOVE (property deletion), MERGE (ON CREATE/ON MATCH), CREATE edge chains; clause ordering MERGE → CREATE → SET → REMOVE → DELETE; CreateChainPattern elements array structure.
-
-### Index & Schema
-
-[indexes.test.ts](./indexes.test.ts) — HashIndex (equality), BTreeIndex (range queries), FullTextIndex (text search), IndexManager lifecycle, QueryPlanner optimization hints; unique constraint enforcement; buildIndex(), isBuilt(), getAllIndexConfigs().
-
-[generateSchemaGuide.test.ts](./generateSchemaGuide.test.ts) — generateSchemaGuide(), generateCompactSchemaGuide(), generateGrammarDescription(); LLM-formatted markdown output with ID format `<EntityName>:<uuid>`; progressive complexity ordering.
-
-[standardSchema.test.ts](./standardSchema.test.ts) — Standard Schema v1 property validation: parsePropertyValue(), parseProperties(); transformation chains (uppercase, trim, integer parsing); PropertyTypeError, AsyncValidationError; Graph.validateProperties toggle.
-
-[index.test.ts](./index.test.ts) — parseQueryToSteps() postprocessor transformations; ReadonlyGraphError for mutation detection in CREATE/SET/DELETE/MERGE/FOREACH when readonly: true.
+- [ErrorHandling.test.ts](./ErrorHandling.test.ts) — `MaxIterationsExceededError` at iteration 1000 default limit; `MemoryLimitExceededError` on `maxCollectionSize` breach; empty traversals returning `[]` without throwing.
+- [Exceptions.test.ts](./Exceptions.test.ts) — Exception hierarchy: `GraphError` base, `VertexNotFoundError` exposing `vertexId`, `PropertyTypeError` with `key`, `label`, `issues` array.
 
 ### Utilities & Fixtures
 
-[testHelpers.ts](./testHelpers.ts) — Shared utilities: makeType<T>() schema factory, stripAnsiEscapeCodes(), dumpSteps(), executeQuery() pipeline wrapper; createTestGraph(), createUserPostGraph(), createFlexibleGraph(), createComprehensiveGraph() factories; standardTestSchema, createTestSchema, flexibleTestSchema, comprehensiveTestSchema GraphSchema constants.
+- [testHelpers.ts](./testHelpers.ts) — `makeType<T>()` mock validators; `executeQuery()` pipeline wrapper; `createTestGraph()`, `createUserPostGraph()`, `createFlexibleGraph()` fixture factories; `dumpSteps()` with ANSI stripping.
+- [createManufacturingGraph.ts](./createManufacturingGraph.ts) — Factory exporting `createManufacturingGraph()` with 44 vertices and 36 edges; deterministic UUIDs; `Concept`, `Property`, `DataType`, `Command`, `Event`, `Effect` labels with `IsA`/`HasProperty`/`Uses`/`Triggers` edges.
 
-[createManufacturingGraph.ts](./createManufacturingGraph.ts) — Manufacturing domain fixture: 44 vertices (Concept, Property, DataType, Command, Event, Effect), 36 edges (IsA, HasProperty, Uses, Triggers); deterministic UUIDs; makeType() schema validators.
+### TCK Compliance Tests
 
-[Comparator.test.ts](./Comparator.test.ts) — compare(), compareObjects() deep comparison; total ordering with type precedence undefined < null < boolean < number < string < object; mixed-type coercion; NaN handling; class instance comparison via toString()/valueOf().
-
-## Subdirectories
-
-### tck/
-
-OpenCypher Technology Compatibility Kit compliance suite. 2,508 tests across 221 files. 47.4% pass rate tracked in TCK_COVERAGE_REPORT.md. Organized by clause (Match, Create, Delete, Set, etc.), expression category (Aggregation, Boolean, Comparison, List, String, Temporal), and use cases (TriadicSelection). Uses test.fails for unimplemented features. See [tck/](./tck/AGENTS.md) (if generated) or [TCK_COVERAGE_REPORT.md](./tck/TCK_COVERAGE_REPORT.md) for detailed compliance matrix.
-
-## Architecture / Data Flow
-
-Test execution pipeline mirrors production query flow:
-
-```
-parse(queryString) → Query AST
-  ↓
-astToSteps(ast) → Step[]
-  ↓
-createTraverser(steps) → Traverser
-  ↓
-traverser.traverse(graph, [undefined]) → Generator<TraversalResult>
-  ↓
-Array.from() or [...] materialization → unknown[]
-```
-
-**Entry Points**: `executeQuery()` helper in [testHelpers.ts](./testHelpers.ts) wraps full pipeline. `createDemoGraph()` provides 7-Person/7-Thing fixture. `createTckGraph()` in tck/tckHelpers.ts provides permissive schema for openCypher compliance.
-
-**State Management**: Global parameter store via `setQueryParams()`/`clearQueryParams()` in [Steps.js](../Steps.js); `beforeEach`/`afterEach` hooks mandatory for isolation.
-
-## Patterns
-
-**Schema Factory Pattern**: `makeType<T>(_defaultValue: T): StandardSchemaV1<T>` returns `{~standard: {version: 1, vendor: "codemix", validate: (v) => ({value: v})}}` across all test files.
-
-**Fixture Pattern**: `const {graph, alice, bob} = createDemoGraph()` destructuring; `graph.addVertex("Label", props)` returns Vertex with `.get()`, `.set()`, `.id` accessors.
-
-**Assertion Pattern**: `Array.from(traversal.values())` or `[...results]` materialization; `toHaveLength(n)`, `toBeInstanceOf(Vertex)`, `toEqual(["Alice", 30])` tuple comparison; `toBeLessThan(100)` performance thresholds.
-
-**AST Inspection Pattern**: `parse(query) as Query`; `(ast.matches[0]!.pattern as Pattern).elements[1] as EdgePattern` for structure validation; `expect(steps[N]).toBeInstanceOf(StepClass)` for step conversion.
+- [tck/](./tck/) — OpenCypher Technology Compatibility Kit infrastructure with 221 test files covering 2,508 tests. [TCK_COVERAGE_REPORT.md](./tck/TCK_COVERAGE_REPORT.md) tracking 47.4% pass rate. Clause-specific tests in [tck/clauses/](./tck/clauses/) (Match1-9, Create1-6, Return1-8, etc.), expression tests in [tck/expressions/](./tck/expressions/) (Aggregation1-8, List1-12, Temporal1-10), and use-case tests in [tck/useCases/](./tck/useCases/).
 
 ## Behavioral Contracts
 
-**ID Format**: `Label:uuid` pattern; regex `/^Person:[0-9a-f-]+$/`; colon split limit 2 in parseElementId.
+**Element ID Format**  
+`Label:uuid` pattern parsed by `parseElementId()` splitting on first colon only; `"Label:uuid:extra"` truncates to `["Label", "uuid"]`. Vertex IDs via `generateElementId(label)` prepend label to UUID v4.
 
-**Element Access**: `vertex.get("key")` returns property; `edge.outV`/`edge.inV` return Vertex instances; `path.get("alias")` retrieves labeled traversal step.
+**Date Serialization**  
+`Date` instances convert to ISO strings via `toJSON()`; `vertex.get("createdAt")` returns `"2024-01-15T10:30:00.000Z"` string after transport.
 
-**Query Syntax**: `MATCH (n:Label)-[:Type]->(m) WHERE n.prop > $param RETURN n, m ORDER BY n.prop ASC SKIP 10 LIMIT 5`; `CREATE (n:Label {prop: val})`; `MERGE (n:Label {prop: val}) ON CREATE SET n.created = true`.
+**Query Parameter Syntax**  
+`$paramName` parses to `ParameterRef` with `name` field; bound via `new QueryContext(graph, { paramName: value })`; missing parameters return `undefined` without throwing.
 
-**Error Messages**: `"Element ${id} not found"`, `"Maximum iterations (${limit}) exceeded"`, `"Collection size (${actual}) exceeds limit (${limit})"`, `"Cannot negate: last step is not a filter step"`.
+**ORDER BY Null Semantics**  
+PostgreSQL-style defaults: `ASC` implies `NULLS LAST`, `DESC` implies `NULLS FIRST`; explicit `NULLS FIRST`/`NULLS LAST` overrides. Diverges from Neo4j Cypher (nulls always last).
 
-**Performance Thresholds**: 100-vertex chain traversal <1000ms; 100-vertex sort <500ms; 1000-level path depth 10000 accesses <100ms.
+**DISTINCT Aggregates**  
+`count(DISTINCT prop)` excludes null/undefined; `count(DISTINCT node)` counts unique identities. `collect(DISTINCT prop)` returns deduplicated arrays.
+
+**Error Message Patterns**  
+`VertexNotFoundError`: `"Vertex ${vertexId} not found"`; `MaxIterationsExceededError`: `"Maximum iterations (${limit}) exceeded in ${step}"`; `ReadonlyGraphError`: `"Query contains mutation step '${stepName}' but readonly mode is enabled"`.
+
+**TCK Skip Reason Format**  
+`test.skip("[TCK-ID] Description - reason", ...)`; valid reasons include `unlabeled nodes not supported (by design)`, `variable-length *0 not supported`, `DISTINCT in aggregates not supported`.
+
+**Type Coercion in String Contexts**  
+Number-to-string via concatenation: `'Age: ' + 25` → `'Age: 25'`. Boolean-to-string: `'Value: ' + true` → `'Value: true'`. Null-to-empty-string in concatenation.
+
+**Regex Pattern Matching**  
+Case-sensitive by default; `=~ 'Arctic.*'` matches prefix; `'.*-1'` matches suffix; `'.*base.*'` substring; `'Room-[0-9]+'` character class. Non-string properties return empty results (graceful degradation).
+
+**List Indexing Bounds**  
+Out-of-bounds indices return `null`; negative indices count from end (`[-1]` last element). Empty array UNWIND produces zero result rows.
+
+**Property Update Granularity**  
+`updateProperty(id, key, value)` applies individually, not via `Object.assign`; ensures index consistency for `HashIndex` and `BTreeIndex`.
 
 ## Workflow & Conventions
 
-**Framework**: Vitest (`test`, `expect`, `describe`, `beforeEach`, `afterEach`).
+**Test Framework**  
+Vitest with `test()`, `expect()`, `beforeEach()`; type assertions via `as ElementId`, `as Query`, `as SpecificStep`; materialization via `Array.from(traversal.values())` or `[...results]`.
 
-**Test Isolation**: Fresh `new Graph({schema, storage: new InMemoryGraphStorage()})` per test; `clearQueryParams()` in `afterEach` to prevent cross-test pollution.
+**Schema Definition Pattern**  
+`const schema = { vertices: { Person: { properties: { name: makeType<string>("") } } }, edges: { knows: { properties: {} } } } as const satisfies GraphSchema`.
 
-**Naming**: `test("Category - should behavior", () => {})` or `describe("Feature", () => test("case", () => {}))`.
+**Query Execution Pattern**  
+`parse(queryString)` → `astToSteps(ast)` → `createTraverser(steps)` → `traverser.traverse(graph, [], new QueryContext(graph, params))` → `Array.from()` materialization.
 
-**TCK Conventions**: `test.fails("[TCK-ID] Description - reason", () => {})` for known limitations; skip reasons prefixed with category: "undirected edges not supported", "variable-length \*0 not supported".
-
-**Import Consistency**: All cross-module references use exact paths from Import Map section; no path guessing or renaming.
+**TCK Test Organization**  
+Files follow `{Category}{Number}.test.ts` mapping to OpenCypher specification sections; skip strings distinguish permanent design limitations (`(by design)` suffix) from implementation gaps.
