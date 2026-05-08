@@ -24,6 +24,7 @@ import {
   MapElementsStep,
   OrderDirection,
   OrderStep,
+  QueryContext,
   RangeStep,
   RepeatStep,
   SelectStep,
@@ -216,6 +217,7 @@ export class TraversalPath<
   public get<const TLabel extends string>(
     label: TLabel,
   ): GetTraversalPathByLabel<TraversalPath<TParent, TValue, TLabels>, TLabel> {
+    // oxlint-disable-next-line no-this-alias -- Traversing parent chain requires loop variable
     let node: TraversalPath<any, any, any> = this;
     while (node !== undefined) {
       if (node.labels.includes(label)) {
@@ -234,6 +236,7 @@ export class TraversalPath<
     label: TLabel,
   ): GetAllTraversalPathsByLabel<TraversalPath<TParent, TValue, TLabels>, TLabel> {
     const nodes = [] as TraversalPath<any, any, any>[];
+    // oxlint-disable-next-line no-this-alias -- Traversing parent chain requires loop variable
     let node: TraversalPath<any, any, any> = this;
     while (node !== undefined) {
       if (node.labels.includes(label)) {
@@ -445,14 +448,15 @@ export abstract class Traversal<const TSchema extends GraphSchema, const TPath> 
     return this.#steps;
   }
 
-  public traverse() {
+  public traverse(params?: Record<string, unknown>) {
     // Reset the traversed and emitted counts for each step.
     for (const step of this.steps) {
       step.traversed = 0;
       step.emitted = 0;
     }
     const traverser = createTraverser(this.steps);
-    return traverser.traverse(this.graph, []) as Iterable<TPath>;
+    const context = new QueryContext(this.graph, params ?? {});
+    return traverser.traverse(this.graph, [], context) as Iterable<TPath>;
   }
 
   public *[Symbol.iterator]() {

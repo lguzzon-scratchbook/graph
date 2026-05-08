@@ -9,6 +9,7 @@ import { InMemoryGraphStorage } from "../GraphStorage.js";
 import { parse } from "../grammar.js";
 import { astToSteps } from "../astToSteps.js";
 import { createTraverser, stringifySteps } from "../Steps.js";
+import { QueryContext } from "../QueryContext.js";
 
 /**
  * Creates a mock StandardSchemaV1 type for testing.
@@ -59,7 +60,7 @@ export function executeQuery(
     console.log(stringifySteps(steps));
   }
   const traverser = createTraverser(steps);
-  return Array.from(traverser.traverse(graph, []));
+  return Array.from(traverser.traverse(graph, [], new QueryContext(graph, {})));
 }
 
 /**

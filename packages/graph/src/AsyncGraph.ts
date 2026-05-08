@@ -1,7 +1,7 @@
 import { Graph } from "./Graph.js";
 import { GraphSchema } from "./GraphSchema.js";
 import { ElementId, InMemoryGraphStorage, StoredEdge, StoredVertex } from "./GraphStorage.js";
-import { createStepsFromJSON, createTraverser, StepJSON } from "./Steps.js";
+import { createStepsFromJSON, createTraverser, QueryContext, StepJSON } from "./Steps.js";
 import { GraphTraversal, Traversal, TraversalPath, TraversalPathJSON } from "./Traversals.js";
 
 /**
@@ -195,7 +195,8 @@ function* handleAsyncQuery<TSchema extends GraphSchema>(
 ) {
   const steps = createStepsFromJSON(command.steps);
   const traverser = createTraverser(steps);
-  for (const path of traverser.traverse(graph, [])) {
+  const context = new QueryContext(graph, {});
+  for (const path of traverser.traverse(graph, [], context)) {
     yield jsonClone(path) as TraversalPathJSON | StoredEdge | StoredVertex;
   }
 }
