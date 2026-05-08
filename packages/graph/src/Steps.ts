@@ -7422,3 +7422,12 @@ export function createStepsFromJSON(input: readonly StepJSON[]): readonly Step<a
     return new StepClass(config);
   });
 }
+
+// Export condition evaluation functions for modular steps system
+export {
+  evaluateCondition,
+  resolveConditionValue,
+  stringifyCondition,
+  stringifyConditionValueRef,
+  compare,
+};
