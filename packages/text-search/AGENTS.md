@@ -11,23 +11,28 @@ ESM TypeScript package. Build target `dist/index.js` with types `dist/index.d.ts
 ## Contents
 
 ### Package Manifests
+
 - [package.json](./package.json) — ESM exports, build/test scripts, catalog devDeps.
 - [tsconfig.json](./tsconfig.json) — Project reference config, composite declarations, declarationMap.
 
 ### Documentation
+
 - [README.md](./README.md) — API documentation, scoring formulas, benchmark data.
 - [CHANGELOG.md](./CHANGELOG.md) — npm publish config history.
 
-### Test Configuration  
+### Test Configuration
+
 - [vitest.config.ts](./vitest.config.ts) — Istanbul coverage provider, globals enabled, exclusion globs `dist/**`, `coverage/**`, `**/node_modules/**`.
 
 ### Source Code
+
 - [src/index.ts](./src/index.ts) — Barrel re-export: `createMatcher`, `rankDocuments`, `tokenize`, `stem`, `STOPWORDS`, type definitions.
 - [src/matcher.ts](./src/matcher.ts) — BM25 scoring engine. Exports `createMatcher`, `createDetailedMatcher`, `rankDocuments`. Implements bonus heuristics `exactMatchBonus`, `prefixMatchBonus`, `consecutiveBonus`, `positionWeight`.
 - [src/tokenizer.ts](./src/tokenizer.ts) — Tokenization pipeline. Exports `tokenize`, `extractTerms`, `buildTermFrequency`, `buildPositionMap`. Defines 33-word `STOPWORDS` set.
 - [src/stemmer.ts](./src/stemmer.ts) — Porter stemming algorithm. Exports `stem`. Steps 1a-5b implementation with regex patterns `mgr0`, `meq1`, `mgr1`, `cvc`.
 
 ### Tests
+
 - [src/matcher.test.ts](./src/matcher.test.ts) — Scoring validation, edge cases, object ranking API via `RankConfig`.
 - [src/tokenizer.test.ts](./src/tokenizer.test.ts) — Tokenization accuracy, position tracking, stopword filtering.
 - [src/stemmer.test.ts](./src/stemmer.test.ts) — Porter algorithm validation steps 1a through 5b.
@@ -38,6 +43,7 @@ ESM TypeScript package. Build target `dist/index.js` with types `dist/index.d.ts
 Entry: `./src/index.ts`.
 
 **Functions**:
+
 - `createMatcher(query, options?): MatcherFn` — Precomputes query tokenization, returns reusable scorer clamped [0,1].
 - `createDetailedMatcher(query, options?): DetailedMatcherFn` — Returns granular scoring components: `termScore`, `exactBonus`, `prefixBonus`, `consecutiveBonus`, `positionScore`, `matchedTerms`, `totalTerms`.
 - `rankDocuments(query, documents, options?): RankResult[]` — Dual overload: string array scoring or object extraction via `RankConfig` with `key` and `text` extractor.
@@ -66,9 +72,11 @@ Score formula: `min(1, termScore + exactBonus + prefixBonus + consecutiveBonus +
 ## Behavioral Contracts
 
 **BM25 Formula**:
+
 ```
 (termFreq * (k1 + 1)) / (termFreq + k1 * (1 - b + b * (docLength / 50)))
 ```
+
 Coverage multiplier: `0.5 + 0.5 * (matchedTerms / totalTerms)`. Base score max 0.6.
 
 **Position Scoring**: `calculatePositionScore` uses `(1 - Math.min(...positions) / docLength)` averaged across matched terms, scaled by `options.positionWeight`.
@@ -76,10 +84,12 @@ Coverage multiplier: `0.5 + 0.5 * (matchedTerms / totalTerms)`. Base score max 0
 **Consecutive Detection**: `calculateConsecutiveBonus` checks `nextPositions.includes(pos + 1)` via `docPositions` Map from `buildPositionMap`.
 
 **Tokenizer Patterns**:
+
 - `/[^a-z0-9\s]/g` — strips non-alphanumeric
 - `/\s+/` — splits whitespace
 
 **Porter Stemmer Regexes** (from `stemmer.ts`):
+
 ```
 consonant = "[^aeiou]"
 vowel = "[aeiouy]"
@@ -94,13 +104,15 @@ cvc = /${consonant}${vowel}[^aeiouwxy]$/  // CVC pattern, step 5a
 **Stopwords** (33 items): `"a","an","and","are","as","at","be","but","by","for","if","in","into","is","it","no","not","of","on","or","such","that","the","their","then","there","these","they","this","to","was","will","with"`
 
 **Default Options**:
+
 - `stem: true`, `removeStopwords: true`, `minLength: 1`
 - `k1: 1.2`, `b: 0.75`
 - `exactMatchBonus: 0.15`, `prefixMatchBonus: 0.1`, `consecutiveBonus: 0.1`, `positionWeight: 0.05`
 
 **Performance Thresholds**:
+
 - `tokenize` 1000-word doc ×100: <500ms
-- `createMatcher` score 1000-word doc ×100: <500ms  
+- `createMatcher` score 1000-word doc ×100: <500ms
 - `rankDocuments` 100 docs: <1000ms
 - 500 scoring ops (50 docs × 10 passes): <1000ms
 

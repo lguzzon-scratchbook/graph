@@ -7,14 +7,17 @@ BM25-inspired text search with Porter stemming, stopword filtering, and multi-fa
 ## Contents
 
 ### Core API
+
 - [index.ts](./index.ts) — Barrel re-export of `matcher.js`, `tokenizer.js`, `stemmer.js` public API.
 - [matcher.ts](./matcher.ts) — `createMatcher`, `createDetailedMatcher`, `rankDocuments` with BM25 scoring and bonus heuristics.
 
-### Tokenization Pipeline  
+### Tokenization Pipeline
+
 - [tokenizer.ts](./tokenizer.ts) — `tokenize`, `extractTerms`, `buildTermFrequency`, `buildPositionMap` with 33-word `STOPWORDS` set.
 - [stemmer.ts](./stemmer.ts) — `stem` implementing Porter Stemmer algorithm (steps 1a-5b).
 
 ### Tests
+
 - [matcher.test.ts](./matcher.test.ts) — Validates scoring heuristics, edge cases, object ranking API.
 - [tokenizer.test.ts](./tokenizer.test.ts) — Validates tokenization, position tracking, stopword filtering.
 - [stemmer.test.ts](./stemmer.test.ts) — Validates Porter algorithm steps 1a through 5b.
@@ -29,6 +32,7 @@ Data flows through three stages: **Tokenization** (`tokenize` from `tokenizer.ts
 ## API Surface
 
 **Entry**: [index.ts](./index.ts) exports:
+
 - `createMatcher(query, opts?) => MatcherFn` — returns `(text) => number` scoring 0-1
 - `createDetailedMatcher(query, opts?) => (text) => MatchResult` — returns granular breakdowns
 - `rankDocuments` — dual overload for strings or objects
@@ -47,6 +51,7 @@ Data flows through three stages: **Tokenization** (`tokenize` from `tokenizer.ts
 **Consecutive Detection**: `calculateConsecutiveBonus` checks `nextPositions.includes(pos + 1)` via `docPositions` Map from `buildPositionMap`.
 
 **Porter Stemmer Regexes** (from `stemmer.ts`):
+
 - `consonant = "[^aeiou]"`
 - `vowel = "[aeiouy]"`
 - `C = "${consonant}[^aeiouy]*"` (consonant sequence)
@@ -57,12 +62,14 @@ Data flows through three stages: **Tokenization** (`tokenize` from `tokenizer.ts
 - `cvc = /${consonant}${vowel}[^aeiouwxy]$/` (CVC pattern for step 5a)
 
 **Tokenizer Regexes**:
+
 - `/[^a-z0-9\s]/g` — strips non-alphanumeric
 - `/\s+/` — splits on whitespace
 
 **Performance Thresholds** (from `performance.test.ts`):
+
 - `tokenize` 1000-word document ×100 iterations: <500ms
-- `createMatcher` scoring 1000-word document ×100: <500ms  
+- `createMatcher` scoring 1000-word document ×100: <500ms
 - `rankDocuments` 100 documents: <1000ms
 - 500 scoring operations (50 docs × 10 passes): <1000ms
 
@@ -71,6 +78,7 @@ Data flows through three stages: **Tokenization** (`tokenize` from `tokenizer.ts
 **Stopwords Set** (33 items): `"a","an","and","are","as","at","be","but","by","for","if","in","into","is","it","no","not","of","on","or","such","that","the","their","then","there","these","they","this","to","was","will","with"`
 
 **Default Options** (`MatcherOptions`):
+
 - `stem: true`, `removeStopwords: true`, `minLength: 1`
 - `k1: 1.2`, `b: 0.75`
 - `exactMatchBonus: 0.15`, `prefixMatchBonus: 0.1`, `consecutiveBonus: 0.1`, `positionWeight: 0.05`

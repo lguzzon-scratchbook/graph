@@ -7,9 +7,11 @@ GitHub Actions workflows automating CI verification and release management for t
 ## Contents
 
 ### CI Workflow
+
 - **[ci.yml](./ci.yml)** — Runs lint, format:check, build, typecheck, and vitest on every push. Uses concurrency key `ci-${{ github.workflow }}-${{ github.ref }}` with `cancel-in-progress: true`.
 
 ### Release Workflow
+
 - **[release.yml](./release.yml)** — Executes changesets version and publish on main branch pushes. Uses `changesets/action@v1` with `pnpm version-packages` and `pnpm release` commands.
 
 ## Workflow & Conventions
@@ -21,16 +23,19 @@ GitHub Actions workflows automating CI verification and release management for t
 **Release Triggers:** `push` to `main` branch or `workflow_dispatch`. Requires `fetch-depth: 0` for full git history.
 
 **Concurrency Control:**
+
 - CI: `ci-${{ github.workflow }}-${{ github.ref }}`
 - Release: `release-${{ github.workflow }}-${{ github.ref }}`
 - Both enable `cancel-in-progress: true`.
 
 **Changesets Integration:**
+
 - Version command: `pnpm version-packages`
 - Publish command: `pnpm release`
 - Commit message: `"chore: version packages"`
 - Required secrets: `GITHUB_TOKEN`, `NPM_TOKEN`, `NODE_AUTH_TOKEN`
 
 **Repository Permissions:**
+
 - CI job uses `permissions: contents: read` (minimal scope)
 - Release job requires write permissions for commits and tags

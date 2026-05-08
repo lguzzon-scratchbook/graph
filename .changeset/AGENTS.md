@@ -7,18 +7,19 @@ Changesets configuration directory for monorepo versioning and publishing. Contr
 ## Contents
 
 ### Configuration
+
 - [config.json](./config.json) — Changesets behavior: base branch "main", no auto-commit, patch-level internal dependency updates, public npm access.
 - [README.md](./README.md) — Points to changesets/changesets documentation and common questions.
 
 ## Configuration
 
-| Field | Value | Behavior |
-|-------|-------|----------|
-| `baseBranch` | `"main"` | Compare changes against main branch for versioning |
-| `commit` | `false` | Changeset files must be committed manually; no auto-commit during version/publish |
-| `changelog` | `"@changesets/cli/changelog"` | Default changelog generator |
-| `access` | `"public"` | Published packages are public on npm |
-| `updateInternalDependencies` | `"patch"` | Internal workspace dependencies bump at patch level when dependee changes |
+| Field                        | Value                         | Behavior                                                                          |
+| ---------------------------- | ----------------------------- | --------------------------------------------------------------------------------- |
+| `baseBranch`                 | `"main"`                      | Compare changes against main branch for versioning                                |
+| `commit`                     | `false`                       | Changeset files must be committed manually; no auto-commit during version/publish |
+| `changelog`                  | `"@changesets/cli/changelog"` | Default changelog generator                                                       |
+| `access`                     | `"public"`                    | Published packages are public on npm                                              |
+| `updateInternalDependencies` | `"patch"`                     | Internal workspace dependencies bump at patch level when dependee changes         |
 
 ## Workflow & Conventions
 

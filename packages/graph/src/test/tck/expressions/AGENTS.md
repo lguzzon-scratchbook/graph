@@ -7,6 +7,7 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 ## Contents
 
 ### Aggregation Functions
+
 - [Aggregation1.test.ts](./Aggregation1.test.ts) — `count()` semantics including DISTINCT, implicit grouping, and loop handling (8 scenarios, 3 marked `test.fails` for unlabeled nodes/DISTINCT limitations)
 - [Aggregation2.test.ts](./Aggregation2.test.ts) — `min()`/`max()` across numeric, string, and list types with mixed-type comparison edge cases
 - [Aggregation3.test.ts](./Aggregation3.test.ts) — `sum()` overflow resistance and property aggregation
@@ -17,6 +18,7 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 - [Aggregation8.test.ts](./Aggregation8.test.ts) — DISTINCT modifier behavior across all aggregate functions
 
 ### Boolean Logic
+
 - [Boolean1.test.ts](./Boolean1.test.ts) — AND truth table (Kleene logic) and 3-operand chains with commutativity/associativity proofs
 - [Boolean2.test.ts](./Boolean2.test.ts) — OR logical operations and algebraic laws
 - [Boolean3.test.ts](./Boolean3.test.ts) — XOR exclusive disjunction semantics including parity-based chaining (odd=true, even=false)
@@ -24,16 +26,19 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 - [Boolean5.test.ts](./Boolean5.test.ts) — Interoperability tests: distributivity, De Morgan's laws, and operator precedence chains
 
 ### Comparisons
+
 - [Comparison1.test.ts](./Comparison1.test.ts) — Equality (`=`) and inequality (`<>`) with NaN semantics, 64-bit integer boundaries, and structural equality for lists/maps
 - [Comparison2.test.ts](./Comparison2.test.ts) — Half-bounded range operators (`<`, `>`, `<=`, `>=`) with cross-type null propagation and lexicographic list ordering
 - [Comparison3.test.ts](./Comparison3.test.ts) — Full-bound range expressions (`1 < n.num < 3`) and AND-based alternatives for chained comparisons
 - [Comparison4.test.ts](./Comparison4.test.ts) — Complex operator combinations including cross-node property comparisons and nested boolean precedence
 
 ### Conditional Expressions
+
 - [Conditional1.test.ts](./Conditional1.test.ts) — `coalesce()` null-coalescing with multi-arg chains and cross-node fallbacks
 - [Conditional2.test.ts](./Conditional2.test.ts) — Simple and searched `CASE` expressions with type strictness verification and first-match-wins ordering
 
 ### Graph Functions
+
 - [Graph1.test.ts](./Graph1.test.ts) — `id()`, `elementId()` identifier extraction and identity comparison operators (`=`, `<>`)
 - [Graph2.test.ts](./Graph2.test.ts) — `startNode()`, `endNode()` edge endpoint resolution and bidirectional traversal syntax
 - [Graph3.test.ts](./Graph3.test.ts) — `labels()` function with multi-label and unlabeled node limitations documented
@@ -45,6 +50,7 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 - [Graph9.test.ts](./Graph9.test.ts) — `properties()` map extraction and validation of non-graph type errors
 
 ### List Operations
+
 - [List1.test.ts](./List1.test.ts) — Dynamic element access via bracket operator `[index]` with parameterized lookups
 - [List2.test.ts](./List2.test.ts) — Slice notation `[start..end]` with implicit bounds, negative indices, and null poisoning
 - [List3.test.ts](./List3.test.ts) — List equality with null propagation and nested structure comparison
@@ -59,6 +65,7 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 - [List12.test.ts](./List12.test.ts) — List comprehension syntax `[x IN list | expression]` with filter and projection clauses
 
 ### Literals
+
 - [Literals1.test.ts](./Literals1.test.ts) — Boolean and null literal case-insensitivity (`true`/`TRUE`/`null`/`NULL`)
 - [Literals2.test.ts](./Literals2.test.ts) — Decimal integer bounds and overflow validation (64-bit limits)
 - [Literals3.test.ts](./Literals3.test.ts) — Hexadecimal integer parsing (`0x` prefix) with case insensitivity
@@ -69,11 +76,13 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 - [Literals8.test.ts](./Literals8.test.ts) — Map literals with delimited identifiers and nested structures
 
 ### Map Operations
+
 - [Map1.test.ts](./Map1.test.ts) — Static property access (`map.key`) with case sensitivity and type validation
 - [Map2.test.ts](./Map2.test.ts) — Dynamic value access (`map[expr]`) with parameterized indices
 - [Map3.test.ts](./Map3.test.ts) — `keys()` function for map key extraction and IN operator existence checks
 
 ### Mathematical Functions
+
 - [Mathematical2.test.ts](./Mathematical2.test.ts) — Addition operator
 - [Mathematical3.test.ts](./Mathematical3.test.ts) — Subtraction and Unicode hyphen rejection
 - [Mathematical4.test.ts](./Mathematical4.test.ts) — Multiplication placeholder (empty TCK source)
@@ -91,26 +100,31 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 - [Mathematical17.test.ts](./Mathematical17.test.ts) — Inverse trigonometric functions placeholder
 
 ### Null Handling
+
 - [Null1.test.ts](./Null1.test.ts) — `IS NULL` operator for property existence, literal null, and boolean combinations
 - [Null2.test.ts](./Null2.test.ts) — `IS NOT NULL` operator with case-insensitive parsing
 - [Null3.test.ts](./Null3.test.ts) — 3-valued logic semantics (`null = null` → `null`) and IN operator null propagation
 
 ### Path Operations
+
 - [Path1.test.ts](./Path1.test.ts) — `nodes()` path extraction function
 - [Path2.test.ts](./Path2.test.ts) — `relationships()` path extraction and multi-hop chains
 - [Path3.test.ts](./Path3.test.ts) — `length()` function with variable-length pattern limitations
 
 ### Pattern Predicates
+
 - [Pattern1.test.ts](./Pattern1.test.ts) — Existential pattern predicates `(n)-[]->()` in WHERE clauses with direction/type specificity
 - [Pattern2.test.ts](./Pattern2.test.ts) — Pattern comprehension syntax `[p = pattern | expr]` documented as unsupported with explicit MATCH alternatives
 
 ### Precedence
+
 - [Precedence1.test.ts](./Precedence1.test.ts) — Boolean operator precedence: NOT > Comparison > IS NULL > IN > AND > XOR > OR
 - [Precedence2.test.ts](./Precedence2.test.ts) — Numeric operator precedence: unary > exponentiation > multiplicative > additive
 - [Precedence3.test.ts](./Precedence3.test.ts) — List operator precedence with IN binding tighter than comparison
 - [Precedence4.test.ts](./Precedence4.test.ts) — Null operator precedence in 3-valued logic chains
 
 ### Quantifiers
+
 - [Quantifier1.test.ts](./Quantifier1.test.ts) — `none()` vacuous truth and existential quantification
 - [Quantifier2.test.ts](./Quantifier2.test.ts) — `single()` exact-match quantifier
 - [Quantifier3.test.ts](./Quantifier3.test.ts) — `any()` existential quantifier
@@ -125,6 +139,7 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 - [Quantifier12.test.ts](./Quantifier12.test.ts) — `all()` vacuous truth on empty collections
 
 ### String Operations
+
 - [String1.test.ts](./String1.test.ts) — `substring()` and `STARTS WITH` prefix matching
 - [String3.test.ts](./String3.test.ts) — `reverse()` string function
 - [String4.test.ts](./String4.test.ts) — `split()` function with UNWIND integration
@@ -135,6 +150,7 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 - [String2.test.ts](./String2.test.ts), [String5.test.ts](./String5.test.ts), [String6.test.ts](./String6.test.ts), [String7.test.ts](./String7.test.ts), [String12.test.ts](./String12.test.ts), [String13.test.ts](./String13.test.ts), [String14.test.ts](./String14.test.ts) — Placeholders for unimplemented TCK features (trimming, casing, regex, replacement)
 
 ### Temporal Types
+
 - [Temporal1.test.ts](./Temporal1.test.ts) — Temporal constructors from maps (`date()`, `time()`, `datetime()`, `duration()`)
 - [Temporal2.test.ts](./Temporal2.test.ts) — ISO 8601 string parsing for dates, times, and durations
 - [Temporal3.test.ts](./Temporal3.test.ts) — Temporal projection between types (date→datetime truncation)
@@ -147,6 +163,7 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 - [Temporal10.test.ts](./Temporal10.test.ts) — `duration.between()` and component extraction
 
 ### Type Conversions
+
 - [TypeConversion1.test.ts](./TypeConversion1.test.ts) — `toBoolean()`/`toBooleanOrNull()` with string parsing and invalid type handling
 - [TypeConversion2.test.ts](./TypeConversion2.test.ts) — `toInteger()`/`toIntegerOrNull()` with float truncation toward zero
 - [TypeConversion3.test.ts](./TypeConversion3.test.ts) — `toFloat()`/`toFloatOrNull()` numeric coercion
@@ -156,6 +173,7 @@ TCK (Technology Compatibility Kit) compliance test suite for Cypher expression e
 ## Test Infrastructure
 
 All tests import from [../tckHelpers.js](../tckHelpers.js):
+
 - `createTckGraph(): Graph` — Factory for isolated in-memory graph instances per test
 - `executeTckQuery(graph, query, params?): Result[]` — Cypher query executor returning result arrays
 - `getLabel(node): string` — Node label extractor (used in Graph/Pattern tests)
@@ -168,6 +186,7 @@ Temporal tests additionally import type assertions from [../../../TemporalTypes.
 **TCK Translation Convention**: Files map 1:1 to TCK feature files (e.g., `Aggregation1.test.ts` ← `Aggregation1.feature`). Test IDs follow bracket notation: `[1]`, `[2a]`, `[Custom 1]`.
 
 **Limitation Documentation**: Unsupported features use `test.fails()` with descriptive failure reasons:
+
 - "unlabeled nodes not supported" — Grammar requires explicit labels `(:A)`, rejects `()`
 - "OPTIONAL MATCH not fully supported" — Null row generation incomplete
 - "chained comparison syntax may not be supported" — `1 < n.num < 3` parsing
@@ -178,7 +197,8 @@ Temporal tests additionally import type assertions from [../../../TemporalTypes.
 
 **Graph Setup Pattern**: Tests initialize with `const graph = createTckGraph()` then populate via `executeTckQuery(graph, "CREATE (:A)-[:T]->(:B)")` before executing assertions.
 
-**Assertion Patterns**: 
+**Assertion Patterns**:
+
 - Count validation: `expect(results).toHaveLength(n)`
 - Value equality: `expect(results[0]).toBe(expected)` or `toEqual([true, false])` for multi-column returns
 - Null handling: `expect(results[0]).toBeNull()` or explicit null propagation checks
@@ -206,7 +226,8 @@ Temporal tests additionally import type assertions from [../../../TemporalTypes.
 
 **String Literals**: Escape sequences `\n`, `\t` unsupported in CREATE literals (documented in String8-10).
 
-**Grammar Constraints**: 
+**Grammar Constraints**:
+
 - RETURN-only queries require `MATCH`/`CREATE`/`UNWIND` wrapper context
 - Property access inside aggregate functions (`collect(n.name)`) unsupported — use `collect(n)` with post-processing
 - Multiple UNWIND clauses not supported in single query

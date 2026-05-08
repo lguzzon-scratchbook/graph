@@ -43,6 +43,7 @@ OpenCypher Technology Compatibility Kit compliance test suite. Translates Neo4j 
 **Skip Reason Format**: `test.skip("[TCK test ID] Description - reason for skip", ...)`
 
 Valid implementation gap strings:
+
 - `undirected edges not supported`
 - `variable-length *0 not supported`
 - `user-defined procedures not supported`
@@ -54,6 +55,7 @@ Valid implementation gap strings:
 - `aggregation in ORDER BY not supported`
 
 Outdated strings (features working, eligible for re-audit):
+
 - ~~`RETURN-only queries not supported`~~
 - ~~`named path syntax not supported`~~
 - ~~`parameters not supported`~~
@@ -70,6 +72,7 @@ Outdated strings (features working, eligible for re-audit):
 **Result Comparison Semantics**: `resultsMatch` implements bag/multiset equality. Each actual result matches distinct expected result. Uses internal `deepEqual`: strict primitives; recursive arrays; recursive objects (key count and value).
 
 **Query Result Formats**:
+
 - Single `RETURN` projection: raw scalars in array (`["test"]`), not keyed objects.
 - Multiple `RETURN` items: nested arrays (`[["a", "b"]]`).
 - `COUNT(n)` aggregation: scalar number in array (`[3]`).
@@ -97,11 +100,13 @@ Outdated strings (features working, eligible for re-audit):
 **Case Sensitivity**: Labels and relationship types case-sensitive. Property keys case-sensitive.
 
 **Design Limitations (Permanent)**:
+
 - Unlabeled nodes (static schema requires labels) — 221 tests blocked
-- Multi-label syntax (single label per node) — 18 tests blocked  
+- Multi-label syntax (single label per node) — 18 tests blocked
 - Label removal (immutable labels) — blocked by design
 
 **Implementation Blockers (Priority 1)**:
+
 - OPTIONAL MATCH edge cases (~50 tests, null propagation with bound variables)
 - Undirected edge patterns `(a)--(b)` (~30)
 - Variable-length paths `*0..N` (~20, zero minimum unsupported)

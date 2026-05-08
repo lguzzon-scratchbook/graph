@@ -11,4 +11,4 @@ Configures `typescript.tsdk` and `files.exclude`.
 ## Configuration
 
 - `typescript.tsdk`: "node_modules/typescript/lib"
-- `files.exclude`: {"**/*.sum": true}
+- `files.exclude`: {"\*_/_.sum": true}

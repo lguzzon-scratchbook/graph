@@ -7,6 +7,7 @@ Workspace packages directory housing publishable TypeScript packages with shared
 ## Contents
 
 ### Configuration
+
 - [tsconfig-common.json](./tsconfig-common.json) - Shared compiler configuration enforcing ES2024 target, NodeNext module resolution, strict type checking with noUncheckedIndexedAccess, declaration emit, and sourceMap generation.
 
 ## Subdirectories
@@ -17,7 +18,7 @@ Workspace packages directory housing publishable TypeScript packages with shared
 
 ## Stack
 
-- **pnpm workspace** - Monorepo package management (root pnpm-workspace.yaml defines packages/* glob pattern)
+- **pnpm workspace** - Monorepo package management (root pnpm-workspace.yaml defines packages/\* glob pattern)
 - **TypeScript** - ES2024 target, NodeNext module resolution, strict mode enabled via [tsconfig-common.json](./tsconfig-common.json)
 - **Vitest** - Test runner with 20000ms timeout and globals enabled (pattern observed in y-graph-storage/vitest.config.ts)
 - **Peggy** - Parser generator for grammar.peggy files (present in graph/src/grammar.peggy)
@@ -25,6 +26,7 @@ Workspace packages directory housing publishable TypeScript packages with shared
 ## Configuration
 
 [tsconfig-common.json](./tsconfig-common.json) specifies:
+
 - `"target": "ES2024"` - Modern JavaScript runtime features
 - `"module": "NodeNext"` - Native ESM output with Node.js resolution
 - `"moduleResolution": "NodeNext"` - Aligns with module setting for proper ESM support

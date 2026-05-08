@@ -18,6 +18,7 @@ Git hooks directory providing automated code formatting enforcement. Contains pr
 **Format-triggering file extensions:** `*.cjs|*.css|*.cts|*.html|*.js|*.json|*.jsonc|*.jsx|*.md|*.mdx|*.mjs|*.mts|*.scss|*.ts|*.tsx|*.yaml|*.yml`
 
 **Command sequence:**
+
 1. `pnpm exec oxfmt --write` (modifies files in-place)
 2. `git add` (stages formatting changes)
 

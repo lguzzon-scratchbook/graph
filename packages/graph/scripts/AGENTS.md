@@ -19,6 +19,7 @@ Directory houses TCK compliance audit tooling. `tck-audit.ts` identifies re-enab
 **Path Constants:** `TCK_DIR` resolves to `../src/test/tck` relative to script location via `path.join(import.meta.dirname, "../src/test/tck")`. `REPORT_PATH` outputs to `../TCK_AUDIT_RESULTS.md`.
 
 **Categorization Heuristics:**
+
 - `DESIGN_EXCLUSIONS`: `"unlabeled node"`, `"unlabeled nodes"`, `"multi-label"`, `"multi label"`, `"multiple labels"`, `"label removal"`, `"REMOVE n:Label"`, `"remove label"` → category `"design"`
 - `NOW_WORKING_PATTERNS`: `"count(*)"`, `"count(\\*)"`, `"parameters not supported"`, `"parameter syntax"`, `"$param"`, `"RETURN-only"`, `"return-only"`, `"temporal"`, `"date()"`, `"time()"`, `"datetime()"`, `"duration()"`, `"ORDER BY alias"`, `"order by alias"`, `"toBoolean"`, `"startNode"`, `"endNode"`, `"id()"`, `"elementId()"`, `"type()"`, `"labels()"`, `"properties()"`, `"keys()"`, `"range()"`, `"reverse()"`, `"head()"`, `"tail()"`, `"last()"`, `"coalesce()"`, `"WITH...MATCH"`, `"named path"` → category `"now_working"`
 
@@ -27,6 +28,7 @@ Directory houses TCK compliance audit tooling. `tck-audit.ts` identifies re-enab
 ## CLI Interface
 
 `tck-audit.ts` accepts:
+
 - `--dry-run`: Parse-only reporting without test execution
 - `--file=<path>`: Target single file instead of full directory scan
 - `--apply`: Persist successful unskips to source files via batch replacement

@@ -7,6 +7,7 @@ Development environment automation. Scripts directory contains one-time setup ut
 ## Contents
 
 ### Git Hooks Setup
+
 - [setup-git-hooks.sh](./setup-git-hooks.sh) — Configures `core.hooksPath` to `.githooks` directory. Exits silently (0) when run outside git repository or without `git` installed.
 
 ## Workflow & Conventions

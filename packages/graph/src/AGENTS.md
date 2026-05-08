@@ -7,34 +7,41 @@ Core graph database query engine implementing Cypher-inspired query language wit
 ## Contents
 
 ### Parser & AST
+
 - [grammar.peggy](./grammar.peggy) — PEG grammar defining Cypher-like syntax: `MultiStatement` entry, `MatchClause`, `CreateClause`, `MergeClause`, `WhereClause` with `buildBinaryCondition` helper for left-nested condition trees.
 - [grammar.js](./grammar.js) — Peggy 5.1.0 generated parser exporting `parse(input, options)`, `SyntaxError`, `StartRules: ["MultiStatement"]`; contains 16 regex patterns (`peg$r0` identifier start `/^[a-zA-Z_]/` through `peg$r15` line breaks `/^[\n\r]/`).
 - [grammar.d.ts](./grammar.d.ts) — Type declarations for `Location`, `LocationRange`, `Expectation` union, `ParserTracer`, `parse()` overloads returning AST nodes.
 - [AST.ts](./AST.ts) — Discriminated union AST node definitions using `type` field tagging: `Query`, `MatchClause`, `CreateNodePattern`, `EdgePattern` with `direction: "in"|"out"|"both"`, `ShortestPathPattern`, `PropertyCondition`, `ArithmeticExpression`, `LabelOr`/`LabelAnd`/`LabelNot` expressions.
 
 ### Query Compilation
+
 - [astToSteps.ts](./astToSteps.ts) — AST-to-Steps converter: `astToSteps(query)`, `unionAstToSteps(unionQuery)`, `anyAstToSteps(ast)`; `convertPattern` with `isAnchorPattern` heuristic; `convertQuantifiedEdge` building `RepeatStep`; `convertReturnClause` with aggregate validation; `splitASTConditionByVariables` for early/late filter partitioning.
 - [index.ts](./index.ts) — Barrel entry point exporting `parseQueryToSteps(queryString, options)` with `readonly` safety via `validateNoMutations` checking `MUTATION_STEP_NAMES` Set; postprocess functions for result aliasing.
 
 ### Execution Runtime
+
 - [Steps.ts](./Steps.ts) — Step execution engine with `Step<T>` base class, `ContainerStep` for nesting, `createTraverser(steps)` factory; concrete steps: `FetchVerticesStep`, `EdgeStep`, `VertexStep`, `FilterElementsStep` with `Condition` tuples, `RepeatStep` for variable-length paths, `ShortestPathStep`, `UnionStep`, `CreateStep`, `MergeStep`, `SetStep`, `DeleteStep`.
 - [QueryContext.ts](./QueryContext.ts) — Immutable query execution context: `QueryContext<TSchema>` with `#params`, `#graph`, `#options`; `maxIterations` default 1000, `maxCollectionSize` default 100000; `withParams()`/`withOptions()` return new instances.
 - [Comparator.ts](./Comparator.ts) — Cross-type value ordering: `compare(a, b)` with `getTypeOrder` precedence `undefined(0) < null(1) < boolean(2) < number(3) < string(4) < object(5)`; `compareObjects` recursive comparison with `isPlainObject` validation (`constructor === Object`).
 
 ### Traversal API
+
 - [Traversals.ts](./Traversals.ts) — Gremlin-style fluent API: `GraphTraversal` entry with `V()`/`E()`; `VertexTraversal` with `in()`/`out()`/`both()`, `has()`, `as()`, `select()`, `repeat()`, `shortestPath()`; `EdgeTraversal` with `inV()`/`outV()`/`otherV()`; compile-time path type tracking via `TraversalPath<TParent, TValue, TLabels>` with `#parent`, `#value`, `#labels`, `#depth` private fields.
 - [AsyncGraph.ts](./AsyncGraph.ts) — Async transport proxy: `AsyncGraph<TSchema>` with `transport: (command: AsyncCommand) => AsyncIterable<TransportableValue>`; `AsyncQuery`, `AsyncTransaction` discriminated by `@type`; `jsonClone` via `JSON.parse(JSON.stringify(value))`.
 
 ### Storage & Schema
+
 - [Graph.ts](./Graph.ts) — Core runtime: `Graph<TSchema>` with `#vertexIdentities`/`#edgeIdentities` WeakMaps for object stability; `generateElementId(label)` returns `` `${label}:${generateId()}` ``; `parsePropertyValue` validates via Standard Schema v1 `validate()`; `addVertex`/`addEdge` with unique constraint checking via `indexManager.checkAllUniqueConstraints`.
 - [GraphStorage.ts](./GraphStorage.ts) — Storage interface: `ElementId<TLabel>` template literal `` `${TLabel}:${string}` ``; `parseElementId` splits on colon with limit 2; `InMemoryGraphStorage` with `#vertices`, `#edges`, `#incomingEdges`, `#outgoingEdges` Maps; cascade deletion in `deleteVertex` splicing bidirectional edge arrays.
 - [GraphSchema.ts](./GraphSchema.ts) — Type definitions: `GraphSchema` {vertices, edges}, `PropertySchema<TInput, TOutput>` with `StandardSchemaV1` type field, `IndexConfig` discriminated union (`HashIndexConfig`, `BTreeIndexConfig`, `FullTextIndexConfig`); type inference utilities `VertexProperties`, `EdgeProperties`, `ElementLabel`.
 
 ### Extensibility
+
 - [FunctionRegistry.ts](./FunctionRegistry.ts) — Built-in Cypher functions: `FunctionRegistry` class with `#functions: Map<string, FunctionDefinition>` storing lowercase keys; `registerBuiltins()` populates scalar, aggregate, list, type, math, string, temporal categories; `evaluateFunction(name, args, path, distinct?)` wrapper; temporal functions `date()`, `localtime()`, `time()`, `datetime()`, `duration()` with ISO 8601 parsing.
 - [ProcedureRegistry.ts](./ProcedureRegistry.ts) — Built-in procedures: `ProcedureRegistry` with `#procedures` Map; `registerSchemaProcedures()` registers `db.labels`, `db.relationshipTypes`, `db.propertyKeys`, `db.schema.nodeTypeProperties`; `registerUtilityProcedures()` registers `dbms.procedures`, `dbms.functions`; signature format `` `${name}(${params.map((a) => `${a.name}${a.required ? "" : "?"}`).join(", ")})` ``.
 
 ### Types & Utilities
+
 - [TemporalTypes.ts](./TemporalTypes.ts) — Cypher temporal value classes: `DateValue`, `LocalTimeValue`, `TimeValue`, `LocalDateTimeValue`, `DateTimeValue`, `DurationValue` with ISO 8601 parsing via regex `/^(\d{4})-(\d{2})-(\d{2})$/`, `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/`; `TruncateUnit` type; `addDuration`, `subtractDuration`, `durationBetween` with month-end clamping via `getLastDayOfMonth`.
 - [Exceptions.ts](./Exceptions.ts) — Error hierarchy: `GraphError` base, `ElementNotFoundError`, `VertexNotFoundError`, `EdgeNotFoundError`, `LabelNotFoundError`, `UniqueConstraintViolationError` (message `` `Unique constraint violation: property '${property}' on label '${label}' already has value ${JSON.stringify(value)} (existing element: ${existingElementId})` ``), `MaxIterationsExceededError`, `MemoryLimitExceededError`, `ReadonlyGraphError`.
 - [generateSchemaGuide.ts](./generateSchemaGuide.ts) — LLM prompt generators: `generateGrammarDescription()`, `generateSchemaGuide<TSchema>(schema)`, `generateCompactSchemaGuide<TSchema>(schema)`; behavioral contract: `@id` format `<EntityName>:<uuid>` (concrete example `User:12345678-1234-1234-1234-123456789abc`); variable-length path quantifiers emit results at EACH hop (`*1..3` returns 1-hop, 2-hop, AND 3-hop reachable nodes).
@@ -43,6 +50,7 @@ Core graph database query engine implementing Cypher-inspired query language wit
 ## Subdirectories
 
 ### indexes/
+
 - [indexes/index.ts](./indexes/index.ts) — Barrel re-export: `HashIndex`, `BTreeIndex`, `FullTextIndex`, `IndexManager`, `QueryPlanner` functions.
 - [indexes/HashIndex.ts](./indexes/HashIndex.ts) — O(1) equality index: `#index: Map<unknown, Set<ElementId>>`, `#reverse: Map<ElementId, unknown>`; skips null/undefined values via `typeof` check.
 - [indexes/BTreeIndex.ts](./indexes/BTreeIndex.ts) — Sorted array B-tree: binary search with `#findInsertionPoint` using `const mid = (low + high) >>> 1` for overflow-safe division; range queries `lookupLessThan`, `lookupGreaterThan`, `lookupRange`; validates `number | string` value types.
@@ -51,6 +59,7 @@ Core graph database query engine implementing Cypher-inspired query language wit
 - [indexes/QueryPlanner.ts](./indexes/QueryPlanner.ts) — Query optimization: `analyzeCondition` generates `IndexHint` array; `OPERATOR_TO_OPERATION` mapping `=`→equals, `in`→in, `<`/`<=`/`>`/`>=`→range; selectivity priorities (equals=100, in=90, range=80, startsWith=70, contains=60, search=50); `isConditionFullyCovered` returns false for `startsWith`, `contains` (post-filter required).
 
 ### test/
+
 Comprehensive Vitest suite (87 files): parser validation ([grammar.test.ts](./test/grammar.test.ts)), AST transformation ([astToSteps.test.ts](./test/astToSteps.test.ts)), traversal execution ([Traversals.test.ts](./test/Traversals.test.ts)), storage layers ([GraphStorage.test.ts](./test/GraphStorage.test.ts)), index management ([indexes.test.ts](./test/indexes.test.ts)), openCypher TCK compliance ([tck/](./test/tck/) subdirectory with 2,508 tests). Shared utilities in [testHelpers.ts](./test/testHelpers.ts): `executeQuery()` pipeline wrapper, `makeType<T>()` schema factory, demo graph fixtures.
 
 ## Architecture / Data Flow
@@ -98,6 +107,7 @@ materialization via Array.from() or [...] → unknown[]
 **Entry Point**: [index.ts](./index.ts) exports `parseQueryToSteps(queryString, options?)` returning `{ steps: readonly Step<any>[]; postprocess: (row: readonly unknown[]) => Record<string, unknown> }`. Validates mutations throw `ReadonlyGraphError(step.name)` when `options.readonly` true.
 
 **Core Exports**:
+
 - `parse` (from grammar.js)
 - `astToSteps`, `anyAstToSteps`, `unionAstToSteps`, `multiStatementToSteps` (compilation)
 - `Step`, `ContainerStep` (execution runtime)
@@ -115,30 +125,33 @@ materialization via Array.from() or [...] → unknown[]
 ## Behavioral Contracts
 
 ### Grammar Regex Patterns (grammar.js)
+
 ```javascript
-peg$r0 = /^[a-zA-Z_]/          // identifier start
-peg$r1 = /^[a-zA-Z0-9_]/       // identifier continuation  
-peg$r2 = /^[(.[{]/              // expression continuation check
-peg$r3 = /^[+\-]/               // additive operators
-peg$r4 = /^[%*\/]/              // multiplicative operators
-peg$r5 = /^["\\\n\r]/           // double-quote forbidden chars
-peg$r6 = /^['\\\n\r]/           // single-quote forbidden chars
-peg$r7 = /^[xX]/                // hex prefix
-peg$r8 = /^[0-9a-fA-F]/         // hex digits
-peg$r9 = /^[oO]/                // octal prefix
-peg$r10 = /^[0-7]/              // octal digits
-peg$r11 = /^[0-9]/              // decimal digits
-peg$r12 = /^[eE]/               // exponent marker
-peg$r13 = /^[^`]/               // backtick content (any char except backtick)
-peg$r14 = /^[ \t\n\r]/          // whitespace
-peg$r15 = /^[\n\r]/             // line breaks
+peg$r0 = /^[a-zA-Z_]/; // identifier start
+peg$r1 = /^[a-zA-Z0-9_]/; // identifier continuation
+peg$r2 = /^[(.[{]/; // expression continuation check
+peg$r3 = /^[+\-]/; // additive operators
+peg$r4 = /^[%*\/]/; // multiplicative operators
+peg$r5 = /^["\\\n\r]/; // double-quote forbidden chars
+peg$r6 = /^['\\\n\r]/; // single-quote forbidden chars
+peg$r7 = /^[xX]/; // hex prefix
+peg$r8 = /^[0-9a-fA-F]/; // hex digits
+peg$r9 = /^[oO]/; // octal prefix
+peg$r10 = /^[0-7]/; // octal digits
+peg$r11 = /^[0-9]/; // decimal digits
+peg$r12 = /^[eE]/; // exponent marker
+peg$r13 = /^[^`]/; // backtick content (any char except backtick)
+peg$r14 = /^[ \t\n\r]/; // whitespace
+peg$r15 = /^[\n\r]/; // line breaks
 ```
 
 ### Identifier Formats
+
 - **Element ID**: Template literal `` `${TLabel}:${string}` ``; concrete format `Person:12345678-1234-1234-1234-123456789abc`; regex `/^Person:[0-9a-f-]+$/` in test assertions.
 - **Anonymous Variables**: Prefix `__anon_${counter}` starting at 0 (astToSteps.ts).
 
 ### Error Message Templates
+
 - `"ORDER BY, SKIP, and LIMIT require a RETURN clause"`
 - `"allShortestPaths() is not yet implemented. Use shortestPath() to find a single shortest path."`
 - `"Comma-separated MATCH patterns only support simple node patterns. Pattern ${i} contains edges which is not supported. Use separate MATCH clauses for patterns with relationships."`
@@ -152,6 +165,7 @@ peg$r15 = /^[\n\r]/             // line breaks
 - `MemoryLimitExceededError: \`Collection size (${actual}) exceeds limit (${limit}). Consider adding a LIMIT clause or increasing maxCollectionSize.\``
 
 ### Magic Constants
+
 - **Open-ended quantifier max depth**: `100` (astToSteps.ts `convertQuantifiedEdge`, `convertShortestPathPattern`, `convertParenthesizedPathPattern`).
 - **RangeStep end default**: `Number.MAX_SAFE_INTEGER` (astToSteps.ts).
 - **RepeatStep emitStart**: `effectiveMin > 0 ? effectiveMin : 1` (astToSteps.ts).
@@ -160,7 +174,9 @@ peg$r15 = /^[\n\r]/             // line breaks
 - **BTree Binary Search**: `const mid = (low + high) >>> 1` (BTreeIndex.ts, unsigned right shift for overflow-safe division by 2).
 
 ### Condition Tuple Format (Steps.ts)
+
 Step conditions use tagged tuple format:
+
 - Equality: `["=", property, value]` or `["=", "@label", label]`
 - Comparison: `["<" | "<=" | ">" | ">=" | "!=", property, value]`
 - Logical: `["and" | "or" | "xor", ...Condition[]]`, `["not", Condition]`
@@ -172,24 +188,28 @@ Step conditions use tagged tuple format:
 - Label expressions: `["isLabeled", variable, LabelCondition]`, `["labelWildcard"]`
 
 ### Operator Mapping (QueryPlanner.ts)
+
 ```typescript
 OPERATOR_TO_OPERATION = {
-  "=":   { operation: "equals", indexTypes: ["hash", "btree"] },
-  "in":  { operation: "in", indexTypes: ["hash"] },
-  "<":   { operation: "lessThan", indexTypes: ["btree"] },
-  "<=":  { operation: "lessThanOrEqual", indexTypes: ["btree"] },
-  ">":   { operation: "greaterThan", indexTypes: ["btree"] },
-  ">=":  { operation: "greaterThanOrEqual", indexTypes: ["btree"] },
-  "startsWith": { operation: "startsWith", indexTypes: ["fulltext"] },
-  "contains":   { operation: "contains", indexTypes: ["fulltext"] }
-}
+  "=": { operation: "equals", indexTypes: ["hash", "btree"] },
+  in: { operation: "in", indexTypes: ["hash"] },
+  "<": { operation: "lessThan", indexTypes: ["btree"] },
+  "<=": { operation: "lessThanOrEqual", indexTypes: ["btree"] },
+  ">": { operation: "greaterThan", indexTypes: ["btree"] },
+  ">=": { operation: "greaterThanOrEqual", indexTypes: ["btree"] },
+  startsWith: { operation: "startsWith", indexTypes: ["fulltext"] },
+  contains: { operation: "contains", indexTypes: ["fulltext"] },
+};
 ```
+
 Excluded from indexing: `"=~"`, `"not"`, `"exists"`, `"isNull"`, `"isNotNull"`, `"and"`, `"or"`, `"xor"`.
 
 ### Index Key Format
+
 - IndexManager uses `` `${label}.${property}` `` (e.g., `"Person.name"`).
 
 ### Temporal Format Patterns
+
 - **Date**: `/^(\d{4})-(\d{2})-(\d{2})$/` → `YYYY-MM-DD`
 - **LocalTime**: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?$/` → `HH:MM:SS.nnnnnnnnn`
 - **Time**: `/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,9}))?(Z|([+-])(\d{2}):(\d{2}))$/` with offset
@@ -198,15 +218,19 @@ Excluded from indexing: `"=~"`, `"not"`, `"exists"`, `"isNull"`, `"isNotNull"`, 
 - **Duration**: ISO 8601 `P[n]Y[n]M[n]DT[n]H[n]M[n]S` parsed via `/(-?\d+(?:\.\d+)?)(Y|M|W|D)/g` (date components) and `/(-?\d+(?:\.\d+)?)(H|M|S)/g` (time components).
 
 ### Mutation Step Names
+
 Set of mutation steps triggering `ReadonlyGraphError`: `"Create"`, `"Set"`, `"Delete"`, `"Remove"`, `"Merge"`, `"Foreach"` (index.ts `MUTATION_STEP_NAMES`).
 
 ### Type Order Precedence (Comparator.ts)
+
 `undefined(0) < null(1) < boolean(2) < number(3) < string(4) < object(5)`.
 
 ### WeakMap Identity Contract
+
 `instantiateVertex` checks `#vertexIdentities.has(storedVertex)` before construction; `#vertexIdentities.set(storedVertex, instance)` ensures stable reference equality for same stored element.
 
 ### Function Name Resolution
+
 Case-insensitive lookup via `.toLowerCase()` in both `FunctionRegistry` and `ProcedureRegistry`.
 
 ## Reproduction-Critical Constants

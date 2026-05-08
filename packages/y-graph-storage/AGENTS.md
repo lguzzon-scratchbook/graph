@@ -7,19 +7,23 @@ Package exports YGraph extending Graph, YGraphStorage implementing GraphStorage,
 ## Contents
 
 ### Core Source
+
 - [src/YGraphStorage.ts](./src/YGraphStorage.ts) - GraphStorage implementation over Yjs. Exports YGraphStorage class with WeakMap caches #vertexIdentities/#edgeIdentities and transactional methods addVertex/deleteVertex using makeInternalKey.
 - [src/YGraph.ts](./src/YGraph.ts) - YGraph class extending Graph. Exports subscribe() returning Observable<YGraphChange>, query() returning LiveQuery, using zen-observable-ts and createGraphObserver().
 - [src/LazyPropertyDictionary.ts](./src/LazyPropertyDictionary.ts) - Exports createLazyPropertyDictionary() factory using $YMap symbol and descriptorCache WeakMap for Y.Map-backed property proxies.
 - [src/index.ts](./src/index.ts) - Barrel export of YGraph, YGraphStorage, ZodYTypes.
 
 ### Type System
+
 - [src/ZodYTypes.ts](./src/ZodYTypes.ts) - Exports ZodYText, ZodYArray, ZodYMap, ZodYXmlFragment, ZodYXmlText, ZodYXmlElement schemas with union validation accepting native Yjs instances or coercible primitives.
 
 ### Tests
+
 - [src/YGraphStorage.test.ts](./src/YGraphStorage.test.ts) - Validates CRDT operations, identity semantics (clone === alice), subscription events (vertex.added, edge.added, vertex.property.changed), live query reactivity.
 - [src/ZodYTypes.test.ts](./src/ZodYTypes.test.ts) - Validates Zod coercion for Y.Text/Y.Array/Y.Map/XML types, identity preservation, safeParse errors.
 
 ### Configuration
+
 - [package.json](./package.json) - ES module package v0.0.5. Declares exports ./dist/index.js, peer dependencies yjs and @codemix/graph, deps zen-observable-ts and zod.
 - [tsconfig.json](./tsconfig.json) - TypeScript configuration extending workspace packages/tsconfig-common.json.
 - [vitest.config.ts](./src/../vitest.config.ts) - Vitest configuration with 20000ms timeout, globals enabled, excludes dist/** and coverage/**.

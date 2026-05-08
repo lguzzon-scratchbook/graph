@@ -54,7 +54,7 @@ Graph query engine test suite. 87 test files validating Cypher-like parser, AST 
 
 ### Language Features
 
-[arithmetic.test.ts](./arithmetic.test.ts) — Expression operators +, -, *, /, %, ^; unary +/-; precedence (* before +, ^ right-associative); PropertyAccess, ParameterRef; division by zero returns Infinity; NaN propagation; missing properties return empty results.
+[arithmetic.test.ts](./arithmetic.test.ts) — Expression operators +, -, _, /, %, ^; unary +/-; precedence (_ before +, ^ right-associative); PropertyAccess, ParameterRef; division by zero returns Infinity; NaN propagation; missing properties return empty results.
 
 [backtickIdentifiers.test.ts](./backtickIdentifiers.test.ts) — Backtick-quoted identifiers: `` `my node` `` (spaces), `` `MATCH` `` (reserved words), `` `user-name` `` (dashes), unicode `` `用户` ``; escape consecutive backticks collapse to literal; parameters `$`param name``; MERGE SET with backtick properties.
 
@@ -62,7 +62,7 @@ Graph query engine test suite. 87 test files validating Cypher-like parser, AST 
 
 [caseExpression.test.ts](./caseExpression.test.ts) — SQL-style CASE: simple `CASE n.status WHEN 'active' THEN 1`, searched `CASE WHEN n.age > 60 THEN 'senior'`, nested CASE, CASE in arithmetic `n.score + CASE WHEN n.bonus THEN 10 ELSE 0 END`.
 
-[count-star.test.ts](./count-star.test.ts) — `count(*)` aggregate parsing and execution; variable: "*", aggregate: "COUNT"; returns [N] for N vertices.
+[count-star.test.ts](./count-star.test.ts) — `count(*)` aggregate parsing and execution; variable: "\*", aggregate: "COUNT"; returns [N] for N vertices.
 
 [count-support.test.ts](./count-support.test.ts) — COUNT, SUM, AS aliases, GROUP BY, labels() function; multi-label GROUP BY returns [label, count] tuples; parseQueryToSteps returns {steps, postprocess} with aliased object transformation.
 
@@ -94,7 +94,7 @@ Graph query engine test suite. 87 test files validating Cypher-like parser, AST 
 
 [mergeEnhancements.test.ts](./mergeEnhancements.test.ts) — MERGE with parameters: `$name`, `$year` in NodePattern and edge properties; ON CREATE SET, ON MATCH SET; exact property map matching for relationships; multiple parameters.
 
-[new-features.test.ts](./new-features.test.ts) — `type()` function returns single label string (vs labels() array); multi-aggregate RETURN without GROUP BY (COUNT/SUM/AVG); semicolon-separated multi-statement queries with _statementIndex tracking.
+[new-features.test.ts](./new-features.test.ts) — `type()` function returns single label string (vs labels() array); multi-aggregate RETURN without GROUP BY (COUNT/SUM/AVG); semicolon-separated multi-statement queries with \_statementIndex tracking.
 
 [newFeatures.test.ts](./newFeatures.test.ts) — Edge property filters `{weight: 10}`, IN operator `status IN ["active", "pending"]`, IS NULL/IS NOT NULL, NOT operator negation; Fluent API hasIn(), isNull(), isNotNull(), not().
 
@@ -138,7 +138,7 @@ Graph query engine test suite. 87 test files validating Cypher-like parser, AST 
 
 [stringPredicateTraversals.test.ts](./stringPredicateTraversals.test.ts) — GraphTraversal string methods: startsWith(), endsWith(), containing(), matches(); EdgeTraversal filter chaining.
 
-[stringPredicatesAndReturnAll.test.ts](./stringPredicatesAndReturnAll.test.ts) — Cypher STARTS WITH, ENDS WITH, CONTAINS, regex `=~`; inequality `<>` and `!=`; RETURN * syntax returning all variables.
+[stringPredicatesAndReturnAll.test.ts](./stringPredicatesAndReturnAll.test.ts) — Cypher STARTS WITH, ENDS WITH, CONTAINS, regex `=~`; inequality `<>` and `!=`; RETURN \* syntax returning all variables.
 
 [undirected-self-loop.test.ts](./undirected-self-loop.test.ts) — Self-loop `CREATE (a:A)-[:LOOP]->(a)`; undirected pattern `(a)-[r]-(b)` matches both directions; variable reuse `(n)-[r]-(n)`.
 
@@ -179,6 +179,7 @@ Graph query engine test suite. 87 test files validating Cypher-like parser, AST 
 ## Subdirectories
 
 ### tck/
+
 OpenCypher Technology Compatibility Kit compliance suite. 2,508 tests across 221 files. 47.4% pass rate tracked in TCK_COVERAGE_REPORT.md. Organized by clause (Match, Create, Delete, Set, etc.), expression category (Aggregation, Boolean, Comparison, List, String, Temporal), and use cases (TriadicSelection). Uses test.fails for unimplemented features. See [tck/](./tck/AGENTS.md) (if generated) or [TCK_COVERAGE_REPORT.md](./tck/TCK_COVERAGE_REPORT.md) for detailed compliance matrix.
 
 ## Architecture / Data Flow
@@ -231,6 +232,6 @@ Array.from() or [...] materialization → unknown[]
 
 **Naming**: `test("Category - should behavior", () => {})` or `describe("Feature", () => test("case", () => {}))`.
 
-**TCK Conventions**: `test.fails("[TCK-ID] Description - reason", () => {})` for known limitations; skip reasons prefixed with category: "undirected edges not supported", "variable-length *0 not supported".
+**TCK Conventions**: `test.fails("[TCK-ID] Description - reason", () => {})` for known limitations; skip reasons prefixed with category: "undirected edges not supported", "variable-length \*0 not supported".
 
 **Import Consistency**: All cross-module references use exact paths from Import Map section; no path guessing or renaming.

@@ -7,17 +7,21 @@ Implements Yjs CRDT integration layer for `@codemix/graph`, enabling real-time c
 ## Contents
 
 ### Storage Core
+
 - [YGraphStorage.ts](./YGraphStorage.ts) — `YGraphStorage` class implementing `GraphStorage` interface over `Y.Doc`; exports `makeInternalKey`, internal key constants `$InVKey`, `$OutVKey`, `$InEKey`, `$OutEKey`, transactional mutation methods, and WeakMap identity caches `#vertexIdentities`/`#edgeIdentities`
 - [YGraph.ts](./YGraph.ts) — `YGraph<TSchema>` extending `Graph<TSchema>`; exposes `subscribe()` for `YGraphChange` events, `query()` returning `LiveQuery`, and lazy `zen-observable-ts` subscription management via `#subscribers` Set; imports `YGraphStorage` from `./YGraphStorage.js`
 - [LazyPropertyDictionary.ts](./LazyPropertyDictionary.ts) — `createLazyPropertyDictionary<TSchema>()` factory creating property proxies backed by `Y.Map`; uses `$YMap` symbol and `descriptorCache` WeakMap for lazy descriptor initialization
 
 ### Type System
+
 - [ZodYTypes.ts](./ZodYTypes.ts) — Zod schemas `ZodYText`, `ZodYArray`, `ZodYMap`, `ZodYXmlFragment`, `ZodYXmlText`, `ZodYXmlElement` providing union validation (native Yjs instances or coercible primitives)
 
 ### API Surface
+
 - [index.ts](./index.ts) — Barrel export of `YGraph`, `YGraphStorage`, `ZodYTypes`
 
 ### Test Coverage
+
 - [YGraphStorage.test.ts](./YGraphStorage.test.ts) — Validates CRDT graph operations, identity semantics (`clone === alice`), subscription event sequences (`"vertex.added"`, `"edge.added"`, `"vertex.property.changed"`, etc.), and live query reactivity
 - [ZodYTypes.test.ts](./ZodYTypes.test.ts) — Validates Zod coercion behaviors for `Y.Text`, `Y.Array`, `Y.Map`, and XML types; tests identity preservation and `safeParse` error handling
 

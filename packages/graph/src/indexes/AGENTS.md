@@ -7,28 +7,33 @@ Implements graph property indexing layer with three storage-optimized structures
 ## Contents
 
 ### Core Contracts
+
 - [types.ts](./types.ts): Exports `Index` interface (add/remove/update/clear/statistics) and `IndexStatistics` (entries, uniqueValues).
 - [index.ts](./index.ts): Barrel re-export aggregating all public symbols.
 
 ### Index Implementations
+
 - [HashIndex.ts](./HashIndex.ts): Hash-based index with `#index: Map<unknown, Set<ElementId>>` forward map and `#reverse: Map<ElementId, unknown>` for O(1) removal without stored value.
 - [BTreeIndex.ts](./BTreeIndex.ts): Sorted array B-tree supporting range queries (`lookupLessThan`, `lookupGreaterThan`, `lookupRange`) via binary search; validates values are `number | string`.
 - [FullTextIndex.ts](./FullTextIndex.ts): BM25 inverted index using `@codemix/text-search` (`createMatcher`, `extractTerms`); supports prefix, contains, and term-prefix searches with stemming control.
 
 ### Management & Planning
+
 - [IndexManager.ts](./IndexManager.ts): Index lifecycle management with `#createIndex` factory, unique property tracking (`isUnique`, `checkUniqueConstraint`), and MERGE operation support (`findByUniqueProperties`).
 - [QueryPlanner.ts](./QueryPlanner.ts): Condition analysis to `IndexHint` generation via `analyzeCondition`; optimal index selection via `selectBestIndexHint` using selectivity scoring.
 
 ## Architecture / Data Flow
 
-`Index` implementations share common contract: readonly `type`, `label`, `property` fields; `add(elementId, value)`, `remove(elementId, value)`, `update(elementId, oldValue, newValue)`, `clear()`, `statistics()`. 
+`Index` implementations share common contract: readonly `type`, `label`, `property` fields; `add(elementId, value)`, `remove(elementId, value)`, `update(elementId, oldValue, newValue)`, `clear()`, `statistics()`.
 
 `IndexManager` orchestrates:
+
 1. **Lazy Building**: Indexes instantiate via `#createIndex` factory on first access; `#built` Set tracks populated status.
 2. **Constraint Enforcement**: `checkUniqueConstraint` validates uniqueness for `hash`/`btree` indexes before mutations; throws `UniqueConstraintViolationError` on conflicts.
 3. **Event Hooks**: `onElementAdd`, `onElementRemove`, `onPropertyUpdate` propagate storage changes to built indexes.
 
 `QueryPlanner` optimizes:
+
 1. **Condition Analysis**: `analyzeConditionRecursive` traverses condition trees, skips non-indexable operators (`not`, `exists`, `isNull`, `isNotNull`), generates `IndexHint` array.
 2. **Index Selection**: `selectBestIndexHint` filters by `hasIndex` callback, sorts by priority (equals=100, in=90, range=80, startsWith=70, contains=60, search=50), breaks ties preferring `hash` over `btree` for equality.
 3. **Residual Filtering**: `isConditionFullyCovered` identifies when index alone satisfies condition; `extractRemainingCondition` calculates filter remainder for partial coverage (e.g., `startsWith`, `contains` false positives).
@@ -36,6 +41,7 @@ Implements graph property indexing layer with three storage-optimized structures
 ## API Surface
 
 Barrel exports from [index.ts](./index.ts):
+
 - Classes: `HashIndex`, `BTreeIndex`, `FullTextIndex`, `IndexManager`
 - Functions: `analyzeCondition`, `selectBestIndexHint`, `isConditionFullyCovered`, `extractRemainingCondition`
 - Types: `Index`, `IndexStatistics`, `FullTextSearchResult`, `IndexHint`, `IndexOperation`
@@ -53,15 +59,15 @@ Barrel exports from [index.ts](./index.ts):
 
 ```typescript
 OPERATOR_TO_OPERATION = {
-  "=":   { operation: "equals", indexTypes: ["hash", "btree"] },
-  "in":  { operation: "in", indexTypes: ["hash"] },
-  "<":   { operation: "lessThan", indexTypes: ["btree"] },
-  "<=":  { operation: "lessThanOrEqual", indexTypes: ["btree"] },
-  ">":   { operation: "greaterThan", indexTypes: ["btree"] },
-  ">=":  { operation: "greaterThanOrEqual", indexTypes: ["btree"] },
-  "startsWith": { operation: "startsWith", indexTypes: ["fulltext"] },
-  "contains":   { operation: "contains", indexTypes: ["fulltext"] }
-}
+  "=": { operation: "equals", indexTypes: ["hash", "btree"] },
+  in: { operation: "in", indexTypes: ["hash"] },
+  "<": { operation: "lessThan", indexTypes: ["btree"] },
+  "<=": { operation: "lessThanOrEqual", indexTypes: ["btree"] },
+  ">": { operation: "greaterThan", indexTypes: ["btree"] },
+  ">=": { operation: "greaterThanOrEqual", indexTypes: ["btree"] },
+  startsWith: { operation: "startsWith", indexTypes: ["fulltext"] },
+  contains: { operation: "contains", indexTypes: ["fulltext"] },
+};
 ```
 
 - **Excluded Operators**: Regex `"=~"` excluded from indexing; boolean operators `"and"`, `"or"`, `"xor"`, `"not"` traverse recursively; existence checks `"exists"`, `"isNull"`, `"isNotNull"` ignored for indexing.
@@ -69,6 +75,7 @@ OPERATOR_TO_OPERATION = {
 ### Selectivity Priorities (QueryPlanner.ts)
 
 Priority values for `selectBestIndexHint`:
+
 - `equals`: 100
 - `in`: 90
 - `lessThan`, `lessThanOrEqual`, `greaterThan`, `greaterThanOrEqual`: 80
@@ -88,9 +95,11 @@ Tie-breaking: Prefer `hash` over `btree` for `equals` operations.
 ### QueryPlanner Coverage Rules
 
 `isConditionFullyCovered` returns `true` for:
+
 - Operators: `"="`, `"<"`, `"<="`, `">"`, `">="`, `"in"` when `hint.condition === condition`
 
 Returns `false` for:
+
 - `"startsWith"`, `"contains"` (potential false positives requiring post-filter)
 - Boolean operators: `"and"`, `"or"`, `"xor"`, `"not"`
 - Existence checks: `"exists"`, `"isNull"`, `"isNotNull"`

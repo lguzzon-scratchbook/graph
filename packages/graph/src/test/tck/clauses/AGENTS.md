@@ -64,7 +64,7 @@ Cypher TCK compliance test suite validating Neo4j Technology Compatibility Kit s
 
 [Match7.test.ts](./Match7.test.ts): OPTIONAL MATCH: empty graph null handling, bound variable correlation, variable-length `[*]`.
 
-[Match8.test.ts](./Match8.test.ts): MATCH interoperation: WITH, MERGE, RETURN *.
+[Match8.test.ts](./Match8.test.ts): MATCH interoperation: WITH, MERGE, RETURN \*.
 
 [Match9.test.ts](./Match9.test.ts): Deprecated variable-length patterns: undirected `[r:REL*2..2]-`, relationship list reuse `WITH [r1, r2] AS rs`.
 

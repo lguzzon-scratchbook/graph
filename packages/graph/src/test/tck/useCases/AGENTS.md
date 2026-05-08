@@ -13,6 +13,7 @@ Directory holds TCK compliance tests for high-level Cypher use cases—subgraph 
 ## Behavioral Contracts
 
 **Node Creation Patterns**
+
 ```
 CREATE (:A {name: 'a'})
 CREATE (:X {name: 'b1'})
@@ -20,12 +21,14 @@ CREATE (:X {name: 'c11'})
 ```
 
 **Relationship Creation Patterns**
+
 ```
 MATCH (a:A {name: 'a'}), (b:X {name: 'b1'}) CREATE (a)-[:KNOWS]->(b)
 MATCH (a:A {name: 'a'}), (b:X {name: 'b3'}) CREATE (a)-[:FOLLOWS]->(b)
 ```
 
 **Query Patterns**
+
 ```
 MATCH (a:A)-[:KNOWS]->(b:X)-[:KNOWS]->(c:X) RETURN c.name
 MATCH (a:A)-[:KNOWS|FOLLOWS]->(b:X)
@@ -35,6 +38,7 @@ WITH DISTINCT b RETURN count(b)
 ```
 
 **Expected Result Arrays**
+
 - `["c11", "c12", "c21", "c22"]`
 - `["b1", "b2"]`
 - `["b3", "b4"]`
