@@ -11,6 +11,7 @@ export * from "./GraphSchema.js";
 export * from "./GraphStorage.js";
 export * from "./Traversals.js";
 export * from "./Steps.js";
+export * from "./steps/index.js";
 export * from "./indexes/index.js";
 export type {
   Query,
