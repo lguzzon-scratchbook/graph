@@ -44,3 +44,12 @@ next-env.d.ts
 
 .claude
 .mcp.json
+
+# agents-reverse-engineer
+*.sum
+.npm-cache
+.agents-reverse-engineer/
+
+# AgentOps session artifacts
+/.agents/
+
