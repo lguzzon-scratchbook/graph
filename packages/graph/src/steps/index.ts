@@ -94,3 +94,18 @@ export {
   type FetchEdgesStepConfig,
   type CartesianFetchStepConfig,
 } from "./fetch/index.js";
+
+// ============================================================================
+// Traversal Steps (Wave 2 - category modules)
+// ============================================================================
+
+export {
+  VertexStep,
+  EdgeStep,
+  RepeatStep,
+  ShortestPathStep,
+  type VertexStepConfig,
+  type EdgeStepConfig,
+  type RepeatStepConfig,
+  type ShortestPathStepConfig,
+} from "./traversal/index.js";
