@@ -140,3 +140,20 @@ export {
   type CollectStepConfig,
   type GroupByStepConfig,
 } from "./aggregate/index.js";
+
+// ============================================================================
+// Mutation Steps (Wave 2 - category modules)
+// ============================================================================
+
+export {
+  CreateStep,
+  SetStep,
+  DeleteStep,
+  RemoveStep,
+  MergeStep,
+  type CreateStepConfig,
+  type SetStepConfig,
+  type DeleteStepConfig,
+  type RemoveStepConfig,
+  type MergeStepConfig,
+} from "./mutation/index.js";
