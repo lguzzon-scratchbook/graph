@@ -157,3 +157,27 @@ export {
   type RemoveStepConfig,
   type MergeStepConfig,
 } from "./mutation/index.js";
+
+// ============================================================================
+// Control Steps (Wave 2 - category modules)
+// ============================================================================
+
+export {
+  RangeStep,
+  OrderStep,
+  OptionalMatchStep,
+  WithStep,
+  UnwindStep,
+  ForeachStep,
+  type RangeStepConfig,
+  type OrderStepConfig,
+  type OrderDirection,
+  type NullsOrdering,
+  type OptionalMatchStepConfig,
+  type WithStepConfig,
+  type WithItemConfig,
+  type UnwindStepConfig,
+  type UnwindExpression,
+  type ForeachStepConfig,
+  type ForeachListExpression,
+} from "./control/index.js";
