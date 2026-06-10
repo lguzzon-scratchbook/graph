@@ -945,8 +945,8 @@ describe("YGraph edge cases", () => {
 
     // Verify events were emitted (exact counts may vary based on Yjs implementation)
     expect(events.filter((e) => e.kind === "vertex.added").length).toBeGreaterThanOrEqual(1);
-    expect(events.filter((e) => e.kind === "edge.added").length).toBeGreaterThanOrEqual(0);
-    expect(events.filter((e) => e.kind === "vertex.deleted").length).toBeGreaterThanOrEqual(0);
+    expect(events.filter((e) => e.kind === "edge.added").length).toBe(1);
+    expect(events.filter((e) => e.kind === "vertex.deleted").length).toBe(1);
   });
 
   test("handles empty path events", () => {

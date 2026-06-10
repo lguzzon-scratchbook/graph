@@ -1,12 +1,7 @@
 import { expect, test, describe, vi } from "vitest";
 import * as Y from "yjs";
 import * as z from "zod";
-import {
-  GraphSchema,
-  GraphTraversal,
-  VertexNotFoundError,
-  EdgeNotFoundError,
-} from "@codemix/graph";
+import { GraphSchema, GraphTraversal } from "@codemix/graph";
 import { ZodYArray, ZodYText } from "./ZodYTypes.js";
 import { YGraph } from "./YGraph.js";
 import { YGraphStorage, $InVKey, $OutVKey, $InEKey, $OutEKey } from "./YGraphStorage.js";
@@ -299,16 +294,11 @@ describe("YGraphStorage - deleteVertex cascade", () => {
     const doc = new Y.Doc();
     const graph = new YGraphStorage(doc, { schema: schema as unknown as GraphSchema });
 
-    expect(() => {
-      graph.deleteVertex("Person:nonexistent" as `${string}:${string}`);
-    }).toThrow(VertexNotFoundError);
-
-    try {
-      graph.deleteVertex("Person:nonexistent" as `${string}:${string}`);
-    } catch (e) {
-      expect(e).toBeInstanceOf(VertexNotFoundError);
-      expect((e as VertexNotFoundError).vertexId).toBe("Person:nonexistent");
-    }
+    expect(() => graph.deleteVertex("Person:nonexistent" as `${string}:${string}`)).toThrow(
+      expect.objectContaining({
+        vertexId: "Person:nonexistent",
+      }),
+    );
   });
 });
 
@@ -363,16 +353,11 @@ describe("YGraphStorage - deleteEdge", () => {
     const doc = new Y.Doc();
     const graph = new YGraphStorage(doc, { schema: schema as unknown as GraphSchema });
 
-    expect(() => {
-      graph.deleteEdge("knows:nonexistent" as `${string}:${string}`);
-    }).toThrow(EdgeNotFoundError);
-
-    try {
-      graph.deleteEdge("knows:nonexistent" as `${string}:${string}`);
-    } catch (e) {
-      expect(e).toBeInstanceOf(EdgeNotFoundError);
-      expect((e as EdgeNotFoundError).edgeId).toBe("knows:nonexistent");
-    }
+    expect(() => graph.deleteEdge("knows:nonexistent" as `${string}:${string}`)).toThrow(
+      expect.objectContaining({
+        edgeId: "knows:nonexistent",
+      }),
+    );
   });
 });
 
