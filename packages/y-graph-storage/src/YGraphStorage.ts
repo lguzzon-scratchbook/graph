@@ -3,8 +3,8 @@ import {
   type StoredVertex,
   type GraphStorage,
   parseElementId,
-  StoredEdge,
-  GraphSchema,
+  type StoredEdge,
+  type GraphSchema,
   LabelNotFoundError,
   VertexNotFoundError,
   EdgeNotFoundError,
@@ -410,7 +410,9 @@ export class YGraphStorage implements GraphStorage {
     if (data == null) {
       throw new ElementNotFoundError(id);
     }
-    data.set(key, value);
+    this.transact(() => {
+      data.set(key, value);
+    });
   }
 
   protected transact(callback: (tx: Y.Transaction) => void): void {
