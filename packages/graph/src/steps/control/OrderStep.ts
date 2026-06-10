@@ -7,18 +7,14 @@
 
 import { OrderStep as BaseOrderStep, type OrderStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * OrderStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class OrderStep extends BaseOrderStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Order";
 
-  /** Step category */
   static readonly category = "control" as const;
 
   /**
@@ -39,16 +35,6 @@ export class OrderStep extends BaseOrderStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): OrderStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<OrderStepConfig>): OrderStep {
     const { config } = this;
     return new OrderStep({

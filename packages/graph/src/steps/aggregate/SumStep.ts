@@ -7,18 +7,14 @@
 
 import { SumStep as BaseSumStep, type AggregateStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * SumStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class SumStep extends BaseSumStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Sum";
 
-  /** Step category */
   static readonly category = "aggregate" as const;
 
   /**
@@ -40,16 +36,6 @@ export class SumStep extends BaseSumStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): SumStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<AggregateStepConfig>): SumStep {
     const { config } = this;
     return new SumStep({

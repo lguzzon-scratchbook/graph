@@ -7,7 +7,7 @@ import {
   type StepDefinition,
   type StepCategory,
 } from "../StepRegistry.js";
-import { Step, type StepConfig } from "../base.js";
+import { Step, type StepConfig } from "../../Steps.js";
 import type { GraphSource } from "../../Graph.js";
 import type { QueryContext } from "../../QueryContext.js";
 

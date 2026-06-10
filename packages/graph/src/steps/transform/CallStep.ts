@@ -7,8 +7,6 @@
 
 import { CallStep as BaseCallStep, type CallStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * CallStep implementation - source of truth remains in Steps.ts.
@@ -16,10 +14,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Invokes procedures (CALL clause) and yields results.
  */
 export class CallStep extends BaseCallStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Call";
 
-  /** Step category */
   static readonly category = "transform" as const;
 
   /**
@@ -43,16 +39,6 @@ export class CallStep extends BaseCallStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): CallStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<CallStepConfig>): CallStep {
     const { config } = this;
     return new CallStep({

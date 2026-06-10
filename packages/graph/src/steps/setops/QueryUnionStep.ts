@@ -7,8 +7,6 @@
 
 import { QueryUnionStep as BaseQueryUnionStep, type QueryUnionStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * QueryUnionStep implementation - source of truth remains in Steps.ts.
@@ -16,10 +14,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Combines results from multiple query branches (UNION/UNION ALL semantics).
  */
 export class QueryUnionStep extends BaseQueryUnionStep {
-  /** Step name for registry lookup */
   static readonly stepName = "QueryUnion";
 
-  /** Step category */
   static readonly category = "setops" as const;
 
   /**
@@ -45,16 +41,6 @@ export class QueryUnionStep extends BaseQueryUnionStep {
     );
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): QueryUnionStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<QueryUnionStepConfig>): QueryUnionStep {
     const { config } = this;
     return new QueryUnionStep(

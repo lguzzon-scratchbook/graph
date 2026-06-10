@@ -11,8 +11,6 @@ import {
   type Step,
 } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * OptionalMatchStep implementation - source of truth remains in Steps.ts.
@@ -24,10 +22,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
 export class OptionalMatchStep<
   const TSteps extends readonly Step<any>[],
 > extends BaseOptionalMatchStep<TSteps> {
-  /** Step name for registry lookup */
   static readonly stepName = "OptionalMatch";
 
-  /** Step category */
   static readonly category = "control" as const;
 
   /**
@@ -54,19 +50,6 @@ export class OptionalMatchStep<
     );
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(
-    _astNode: AST,
-    _context: ASTConversionContext,
-  ): OptionalMatchStep<readonly Step<any>[]> | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override clone(partial?: Partial<OptionalMatchStepConfig>): OptionalMatchStep<any> {
     const { config, steps } = this;

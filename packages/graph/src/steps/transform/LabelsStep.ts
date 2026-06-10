@@ -7,8 +7,6 @@
 
 import { LabelsStep as BaseLabelsStep, type LabelsStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * LabelsStep implementation - source of truth remains in Steps.ts.
@@ -16,10 +14,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Extracts labels from elements (implements labels() and type() functions).
  */
 export class LabelsStep extends BaseLabelsStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Labels";
 
-  /** Step category */
   static readonly category = "transform" as const;
 
   /**
@@ -39,16 +35,6 @@ export class LabelsStep extends BaseLabelsStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): LabelsStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<LabelsStepConfig>): LabelsStep {
     const { config } = this;
     return new LabelsStep({

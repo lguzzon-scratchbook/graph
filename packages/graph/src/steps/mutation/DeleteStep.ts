@@ -7,18 +7,14 @@
 
 import { DeleteStep as BaseDeleteStep, type DeleteStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * DeleteStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class DeleteStep extends BaseDeleteStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Delete";
 
-  /** Step category */
   static readonly category = "mutation" as const;
 
   /**
@@ -40,20 +36,10 @@ export class DeleteStep extends BaseDeleteStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): DeleteStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<DeleteStepConfig>): DeleteStep {
     const { config } = this;
     return new DeleteStep({
-      variables: partial?.variables ?? config.variables,
+      variables: partial?.variables ?? [...config.variables],
       detach: partial?.detach ?? config.detach,
       stepLabels: partial?.stepLabels ?? (config.stepLabels ? [...config.stepLabels] : undefined),
     });

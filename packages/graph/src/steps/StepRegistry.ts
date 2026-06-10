@@ -8,7 +8,7 @@
  * Pattern: Replicates FunctionRegistry.ts for step management.
  */
 
-import type { Step, StepConfig } from "./base.js";
+import type { Step, StepConfig } from "../Steps.js";
 import type { QueryContext } from "../QueryContext.js";
 import type { AST } from "../AST.js";
 

@@ -7,18 +7,14 @@
 
 import { EdgeStep as BaseEdgeStep, type EdgeStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * EdgeStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class EdgeStep extends BaseEdgeStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Edge";
 
-  /** Step category */
   static readonly category = "traversal" as const;
 
   /**
@@ -40,16 +36,6 @@ export class EdgeStep extends BaseEdgeStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): EdgeStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<EdgeStepConfig>): EdgeStep {
     const { config } = this;
     return new EdgeStep({

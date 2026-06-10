@@ -7,8 +7,6 @@
 
 import { SelectStep as BaseSelectStep, type SelectStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * SelectStep implementation - source of truth remains in Steps.ts.
@@ -16,10 +14,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Selects paths by their labels (implements select() step).
  */
 export class SelectStep extends BaseSelectStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Select";
 
-  /** Step category */
   static readonly category = "transform" as const;
 
   /**
@@ -40,16 +36,6 @@ export class SelectStep extends BaseSelectStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): SelectStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<SelectStepConfig>): SelectStep {
     const { config } = this;
     return new SelectStep({

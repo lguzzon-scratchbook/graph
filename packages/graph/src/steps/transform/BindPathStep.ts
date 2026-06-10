@@ -7,8 +7,6 @@
 
 import { BindPathStep as BaseBindPathStep, type BindPathStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * BindPathStep implementation - source of truth remains in Steps.ts.
@@ -16,10 +14,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Binds the current TraversalPath to a variable name for named path patterns.
  */
 export class BindPathStep extends BaseBindPathStep {
-  /** Step name for registry lookup */
   static readonly stepName = "BindPath";
 
-  /** Step category */
   static readonly category = "transform" as const;
 
   /**
@@ -40,16 +36,6 @@ export class BindPathStep extends BaseBindPathStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): BindPathStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<BindPathStepConfig>): BindPathStep {
     const { config } = this;
     return new BindPathStep({

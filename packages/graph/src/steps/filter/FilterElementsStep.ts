@@ -10,8 +10,6 @@ import {
   type FilterElementsStepConfig,
 } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 import type { TraversalPath } from "../../Traversals.js";
 
 /**
@@ -21,10 +19,8 @@ import type { TraversalPath } from "../../Traversals.js";
 export class FilterElementsStep<
   const TPath extends TraversalPath<any, any, any>,
 > extends BaseFilterElementsStep<TPath> {
-  /** Step name for registry lookup */
   static readonly stepName = "FilterElements";
 
-  /** Step category */
   static readonly category = "filter" as const;
 
   /**
@@ -47,19 +43,6 @@ export class FilterElementsStep<
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(
-    _astNode: AST,
-    _context: ASTConversionContext,
-  ): FilterElementsStep<TraversalPath<any, any, any>> | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<FilterElementsStepConfig<TPath>>): FilterElementsStep<TPath> {
     const { config } = this;
     return new FilterElementsStep({

@@ -7,18 +7,14 @@
 
 import { CollectStep as BaseCollectStep, type CollectStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * CollectStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class CollectStep extends BaseCollectStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Collect";
 
-  /** Step category */
   static readonly category = "aggregate" as const;
 
   /**
@@ -39,16 +35,6 @@ export class CollectStep extends BaseCollectStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): CollectStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<CollectStepConfig>): CollectStep {
     const { config } = this;
     return new CollectStep({

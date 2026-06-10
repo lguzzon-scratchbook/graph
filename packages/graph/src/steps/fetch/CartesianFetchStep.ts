@@ -10,18 +10,14 @@ import {
   type CartesianFetchStepConfig,
 } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * CartesianFetchStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class CartesianFetchStep extends BaseCartesianFetchStep {
-  /** Step name for registry lookup */
   static readonly stepName = "CartesianFetch";
 
-  /** Step category */
   static readonly category = "fetch" as const;
 
   /**
@@ -43,19 +39,6 @@ export class CartesianFetchStep extends BaseCartesianFetchStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   * Returns null if AST node type not supported.
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): CartesianFetchStep | null {
-    // AST conversion handled by astToSteps.ts
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   * Returns modular CartesianFetchStep, not base class.
-   */
   override clone(partial?: Partial<CartesianFetchStepConfig>): CartesianFetchStep {
     const { config } = this;
     return new CartesianFetchStep({

@@ -7,18 +7,14 @@
 
 import { MergeStep as BaseMergeStep, type MergeStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * MergeStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class MergeStep extends BaseMergeStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Merge";
 
-  /** Step category */
   static readonly category = "mutation" as const;
 
   /**
@@ -41,16 +37,6 @@ export class MergeStep extends BaseMergeStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): MergeStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<MergeStepConfig>): MergeStep {
     const { config } = this;
     return new MergeStep({

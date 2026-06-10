@@ -11,8 +11,6 @@ import {
   type Step,
 } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * IntersectStep implementation - source of truth remains in Steps.ts.
@@ -22,10 +20,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
 export class IntersectStep<
   const TSteps extends readonly Step<any>[],
 > extends BaseIntersectStep<TSteps> {
-  /** Step name for registry lookup */
   static readonly stepName = "Intersect";
 
-  /** Step category */
   static readonly category = "setops" as const;
 
   /**
@@ -47,19 +43,6 @@ export class IntersectStep<
     );
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(
-    _astNode: AST,
-    _context: ASTConversionContext,
-  ): IntersectStep<readonly Step<any>[]> | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override clone(partial?: Partial<IntersectStepConfig>): IntersectStep<any> {
     const { config, steps } = this;

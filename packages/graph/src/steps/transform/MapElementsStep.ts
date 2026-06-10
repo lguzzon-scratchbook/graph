@@ -7,8 +7,6 @@
 
 import { MapElementsStep as BaseMapElementsStep, type MapElementsStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * MapElementsStep implementation - source of truth remains in Steps.ts.
@@ -19,10 +17,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * a function mapper. Calling toJSON() will throw an error.
  */
 export class MapElementsStep<TInput> extends BaseMapElementsStep<TInput> {
-  /** Step name for registry lookup */
   static readonly stepName = "MapElements";
 
-  /** Step category */
   static readonly category = "transform" as const;
 
   /**
@@ -35,16 +31,6 @@ export class MapElementsStep<TInput> extends BaseMapElementsStep<TInput> {
     return null;
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): MapElementsStep<unknown> | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<MapElementsStepConfig<TInput>>): MapElementsStep<TInput> {
     const { config } = this;
     return new MapElementsStep({

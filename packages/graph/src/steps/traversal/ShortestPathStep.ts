@@ -13,18 +13,14 @@ import {
   type ShortestPathStepConfig,
 } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * ShortestPathStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class ShortestPathStep extends BaseShortestPathStep {
-  /** Step name for registry lookup */
   static readonly stepName = "ShortestPath";
 
-  /** Step category */
   static readonly category = "traversal" as const;
 
   /**
@@ -50,16 +46,6 @@ export class ShortestPathStep extends BaseShortestPathStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): ShortestPathStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<ShortestPathStepConfig>): ShortestPathStep {
     const { config } = this;
     return new ShortestPathStep({

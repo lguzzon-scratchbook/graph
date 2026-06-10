@@ -5,21 +5,16 @@
  * for dynamic step registration and AST conversion.
  */
 
-import { RepeatStep as BaseRepeatStep, type RepeatStepConfig } from "../../Steps.js";
-import type { Step } from "../base.js";
+import { RepeatStep as BaseRepeatStep, type RepeatStepConfig, type Step } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * RepeatStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class RepeatStep<TSteps extends readonly Step<any>[]> extends BaseRepeatStep<TSteps> {
-  /** Step name for registry lookup */
   static readonly stepName = "Repeat";
 
-  /** Step category */
   static readonly category = "traversal" as const;
 
   /**
@@ -64,19 +59,6 @@ export class RepeatStep<TSteps extends readonly Step<any>[]> extends BaseRepeatS
     );
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(
-    _astNode: AST,
-    _context: ASTConversionContext,
-  ): RepeatStep<readonly Step<any>[]> | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override clone(partial?: Partial<RepeatStepConfig>): RepeatStep<any> {
     const { config, steps } = this;
@@ -89,7 +71,7 @@ export class RepeatStep<TSteps extends readonly Step<any>[]> extends BaseRepeatS
         emitInput: partial?.emitInput ?? config.emitInput,
         stepLabels: partial?.stepLabels ?? (config.stepLabels ? [...config.stepLabels] : undefined),
       },
-      steps,
+      steps.map((step) => step.clone()),
     );
   }
 }

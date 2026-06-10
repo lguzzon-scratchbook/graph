@@ -7,8 +7,6 @@
 
 import { UnionStep as BaseUnionStep, type UnionStepConfig, type Step } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * UnionStep implementation - source of truth remains in Steps.ts.
@@ -16,10 +14,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Gremlin-style union combines input with nested traversal results.
  */
 export class UnionStep<const TSteps extends readonly Step<any>[]> extends BaseUnionStep<TSteps> {
-  /** Step name for registry lookup */
   static readonly stepName = "Union";
 
-  /** Step category */
   static readonly category = "setops" as const;
 
   /**
@@ -41,19 +37,6 @@ export class UnionStep<const TSteps extends readonly Step<any>[]> extends BaseUn
     );
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(
-    _astNode: AST,
-    _context: ASTConversionContext,
-  ): UnionStep<readonly Step<any>[]> | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override clone(partial?: Partial<UnionStepConfig>): UnionStep<any> {
     const { config, steps } = this;

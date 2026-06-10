@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { VertexStep, EdgeStep, RepeatStep, ShortestPathStep } from "../index.js";
 import { stepRegistry } from "../../StepRegistry.js";
-import type { Step } from "../../base.js";
+import type { Step } from "../../../Steps.js";
 
 describe("VertexStep (modular)", () => {
   it("should be registered with stepRegistry", () => {

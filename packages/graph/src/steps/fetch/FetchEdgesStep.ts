@@ -7,18 +7,14 @@
 
 import { FetchEdgesStep as BaseFetchEdgesStep, type FetchEdgesStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * FetchEdgesStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class FetchEdgesStep extends BaseFetchEdgesStep {
-  /** Step name for registry lookup */
   static readonly stepName = "FetchEdges";
 
-  /** Step category */
   static readonly category = "fetch" as const;
 
   /**
@@ -40,19 +36,6 @@ export class FetchEdgesStep extends BaseFetchEdgesStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   * Returns null if AST node type not supported.
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): FetchEdgesStep | null {
-    // AST conversion handled by astToSteps.ts
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   * Returns modular FetchEdgesStep, not base class.
-   */
   override clone(partial?: Partial<FetchEdgesStepConfig>): FetchEdgesStep {
     const { config } = this;
     return new FetchEdgesStep({

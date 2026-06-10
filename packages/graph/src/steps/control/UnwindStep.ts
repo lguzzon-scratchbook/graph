@@ -7,8 +7,6 @@
 
 import { UnwindStep as BaseUnwindStep, type UnwindStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * UnwindStep implementation - source of truth remains in Steps.ts.
@@ -16,10 +14,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * UNWIND expands a list into individual rows.
  */
 export class UnwindStep extends BaseUnwindStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Unwind";
 
-  /** Step category */
   static readonly category = "control" as const;
 
   /**
@@ -41,16 +37,6 @@ export class UnwindStep extends BaseUnwindStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): UnwindStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<UnwindStepConfig>): UnwindStep {
     const { config } = this;
     return new UnwindStep({

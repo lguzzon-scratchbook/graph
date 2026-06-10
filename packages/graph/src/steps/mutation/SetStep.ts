@@ -7,18 +7,14 @@
 
 import { SetStep as BaseSetStep, type SetStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * SetStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class SetStep extends BaseSetStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Set";
 
-  /** Step category */
   static readonly category = "mutation" as const;
 
   /**
@@ -39,16 +35,6 @@ export class SetStep extends BaseSetStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): SetStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<SetStepConfig>): SetStep {
     const { config } = this;
     return new SetStep({

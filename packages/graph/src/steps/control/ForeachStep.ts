@@ -7,8 +7,6 @@
 
 import { ForeachStep as BaseForeachStep, type ForeachStepConfig, type Step } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * ForeachStep implementation - source of truth remains in Steps.ts.
@@ -18,10 +16,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
 export class ForeachStep<
   const TSteps extends readonly Step<any>[],
 > extends BaseForeachStep<TSteps> {
-  /** Step name for registry lookup */
   static readonly stepName = "Foreach";
 
-  /** Step category */
   static readonly category = "control" as const;
 
   /**
@@ -49,19 +45,6 @@ export class ForeachStep<
     );
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(
-    _astNode: AST,
-    _context: ASTConversionContext,
-  ): ForeachStep<readonly Step<any>[]> | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   override clone(partial?: Partial<ForeachStepConfig>): ForeachStep<any> {
     const { config, steps } = this;

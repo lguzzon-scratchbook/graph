@@ -10,8 +10,6 @@ import {
   type PropertyValuesStepConfig,
 } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * PropertyValuesStep implementation - source of truth remains in Steps.ts.
@@ -19,10 +17,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Extracts specific properties from selected elements.
  */
 export class PropertyValuesStep extends BasePropertyValuesStep {
-  /** Step name for registry lookup */
   static readonly stepName = "PropertyValues";
 
-  /** Step category */
   static readonly category = "transform" as const;
 
   /**
@@ -43,16 +39,6 @@ export class PropertyValuesStep extends BasePropertyValuesStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): PropertyValuesStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<PropertyValuesStepConfig>): PropertyValuesStep {
     const { config } = this;
     return new PropertyValuesStep({

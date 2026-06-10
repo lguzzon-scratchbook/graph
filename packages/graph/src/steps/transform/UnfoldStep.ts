@@ -7,8 +7,6 @@
 
 import { UnfoldStep as BaseUnfoldStep, type UnfoldStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * UnfoldStep implementation - source of truth remains in Steps.ts.
@@ -16,10 +14,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Unfolds arrays into individual elements.
  */
 export class UnfoldStep extends BaseUnfoldStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Unfold";
 
-  /** Step category */
   static readonly category = "transform" as const;
 
   /**
@@ -36,16 +32,6 @@ export class UnfoldStep extends BaseUnfoldStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): UnfoldStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<UnfoldStepConfig>): UnfoldStep {
     return new UnfoldStep({
       stepLabels:

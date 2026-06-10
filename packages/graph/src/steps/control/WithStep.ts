@@ -7,8 +7,6 @@
 
 import { WithStep as BaseWithStep, type WithStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * WithStep implementation - source of truth remains in Steps.ts.
@@ -16,10 +14,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Projects variables and optionally applies filtering, ordering, and pagination.
  */
 export class WithStep extends BaseWithStep {
-  /** Step name for registry lookup */
   static readonly stepName = "With";
 
-  /** Step category */
   static readonly category = "control" as const;
 
   /**
@@ -45,16 +41,6 @@ export class WithStep extends BaseWithStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): WithStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<WithStepConfig>): WithStep {
     const { config } = this;
     return new WithStep({

@@ -7,18 +7,14 @@
 
 import { RangeStep as BaseRangeStep, type RangeStepConfig } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * RangeStep implementation - source of truth remains in Steps.ts.
  * This module adds registry integration for dynamic step creation.
  */
 export class RangeStep extends BaseRangeStep {
-  /** Step name for registry lookup */
   static readonly stepName = "Range";
 
-  /** Step category */
   static readonly category = "control" as const;
 
   /**
@@ -40,16 +36,6 @@ export class RangeStep extends BaseRangeStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): RangeStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<RangeStepConfig>): RangeStep {
     const { config } = this;
     return new RangeStep({

@@ -10,8 +10,6 @@ import {
   type ExpressionReturnStepConfig,
 } from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
-import type { AST } from "../../AST.js";
-import type { ASTConversionContext } from "../StepRegistry.js";
 
 /**
  * ExpressionReturnStep implementation - source of truth remains in Steps.ts.
@@ -19,10 +17,8 @@ import type { ASTConversionContext } from "../StepRegistry.js";
  * Evaluates arbitrary expressions for RETURN clauses (functions, arithmetic, etc.).
  */
 export class ExpressionReturnStep extends BaseExpressionReturnStep {
-  /** Step name for registry lookup */
   static readonly stepName = "ExpressionReturn";
 
-  /** Step category */
   static readonly category = "transform" as const;
 
   /**
@@ -43,16 +39,6 @@ export class ExpressionReturnStep extends BaseExpressionReturnStep {
     });
   }
 
-  /**
-   * Create from AST node (optional - for pattern-based creation).
-   */
-  static fromAST(_astNode: AST, _context: ASTConversionContext): ExpressionReturnStep | null {
-    return null;
-  }
-
-  /**
-   * Clone with optional partial config override.
-   */
   override clone(partial?: Partial<ExpressionReturnStepConfig>): ExpressionReturnStep {
     const { config } = this;
     return new ExpressionReturnStep({
