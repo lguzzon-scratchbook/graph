@@ -6,10 +6,10 @@ allowBuilds:
 
 catalog:
   "@types/node": ^25.5.0
-  "@vitest/coverage-istanbul": ^4.1.5
+  "@vitest/coverage-istanbul": ^4.1.8
   typescript: ^6.0.3
   vite: ^8.0.0
-  vitest: ^4.1.5
+  vitest: ^4.1.8
   yjs: ^13.6.29
   zen-observable-ts: ^1.2.5
   zod: 4.3.6
