@@ -143,8 +143,9 @@ export class BTreeIndex implements Index {
    * @param value The value to look up.
    * @returns Set of element IDs with this value.
    */
-  public lookup(value: number | string): Set<ElementId> {
+  public lookup(value: number | string | unknown): Set<ElementId> {
     const result = new Set<ElementId>();
+    if (typeof value !== "number" && typeof value !== "string") return result;
     const startPos = this.#findFirstEqual(value);
 
     if (startPos === -1) {

@@ -51,6 +51,13 @@ export interface Index {
    * Get statistics about the index.
    */
   statistics(): IndexStatistics;
+
+  /**
+   * Look up element IDs by exact value match.
+   * @param value The property value to look up.
+   * @returns Set of element IDs with this value.
+   */
+  lookup(value: unknown): ReadonlySet<ElementId>;
 }
 
 /**

@@ -321,6 +321,10 @@ export class FullTextIndex implements Index {
     this.#documents.clear();
   }
 
+  public lookup(_value: unknown): ReadonlySet<ElementId> {
+    return new Set<ElementId>();
+  }
+
   public statistics(): IndexStatistics {
     return {
       entries: this.#documents.size,

@@ -157,19 +157,11 @@ export class IndexManager<TSchema extends GraphSchema> {
     const index = this.getIndex(label, property);
     if (!index) return undefined;
 
-    // Use hash index lookup for exact match
-    if (index instanceof HashIndex) {
+    // Use index lookup for exact match
+    if (typeof value === "number" || typeof value === "string") {
       const ids = index.lookup(value);
       if (ids.size > 0) {
         return [...ids][0];
-      }
-    } else if (index instanceof BTreeIndex) {
-      // BTreeIndex only supports number | string values
-      if (typeof value === "number" || typeof value === "string") {
-        const ids = index.lookup(value);
-        if (ids.size > 0) {
-          return [...ids][0];
-        }
       }
     }
 
@@ -209,15 +201,12 @@ export class IndexManager<TSchema extends GraphSchema> {
     if (!index) return;
 
     let existingIds: ReadonlySet<ElementId> | Set<ElementId> = new Set();
-    if (index instanceof HashIndex) {
-      existingIds = index.lookup(value);
-    } else if (index instanceof BTreeIndex) {
-      // BTreeIndex only supports number | string values
+    if (index.type === "hash" || index.type === "btree") {
       if (typeof value === "number" || typeof value === "string") {
         existingIds = index.lookup(value);
       }
     } else {
-      return;
+      return; // fulltext indexes don't support uniqueness
     }
 
     for (const existingId of existingIds) {
@@ -365,10 +354,7 @@ export class IndexManager<TSchema extends GraphSchema> {
           // For unique indexes, check for duplicates before adding
           if (isUniqueIndex) {
             let existingIds: ReadonlySet<ElementId> | Set<ElementId> = new Set();
-            if (index instanceof HashIndex) {
-              existingIds = index.lookup(value);
-            } else if (index instanceof BTreeIndex) {
-              // BTreeIndex only supports number | string values
+            if (index.type === "hash" || index.type === "btree") {
               if (typeof value === "number" || typeof value === "string") {
                 existingIds = index.lookup(value);
               }
