@@ -106,11 +106,6 @@ export function tokenize(text: string, options: TokenizeOptions = {}): Token[] {
       continue;
     }
 
-    // Skip very short words
-    if (word.length < minLength) {
-      continue;
-    }
-
     tokens.push({
       original: word,
       stemmed: applyStem ? stem(word) : word,
