@@ -91,8 +91,12 @@ function createGraphObserver<TSchema extends GraphSchema>(graph: YGraph<TSchema>
   const { schema, storage } = graph;
   return new Observable<YGraphChange>((o) => {
     const unsubscribers: (() => void)[] = [];
-    for (const vertexLabel of Object.keys(schema.vertices)) {
-      const collection = storage.getVertexCollectionMap(vertexLabel);
+
+    const observeCollection = (
+      collection: Y.Map<any>,
+      prefix: "vertex" | "edge",
+      label: string,
+    ) => {
       const observer = (events: Y.YEvent<any>[]) => {
         for (const event of events) {
           const { path } = event;
@@ -101,14 +105,14 @@ function createGraphObserver<TSchema extends GraphSchema>(graph: YGraph<TSchema>
               for (const [uuid, change] of event.changes.keys) {
                 if (change.action === "add") {
                   o.next({
-                    kind: "vertex.added",
-                    id: `${vertexLabel}:${uuid}`,
-                  });
+                    kind: `${prefix}.added`,
+                    id: `${label}:${uuid}`,
+                  } as YGraphChange);
                 } else if (change.action === "delete") {
                   o.next({
-                    kind: "vertex.deleted",
-                    id: `${vertexLabel}:${uuid}`,
-                  });
+                    kind: `${prefix}.deleted`,
+                    id: `${label}:${uuid}`,
+                  } as YGraphChange);
                 }
               }
             }
@@ -118,10 +122,10 @@ function createGraphObserver<TSchema extends GraphSchema>(graph: YGraph<TSchema>
                 continue;
               }
               o.next({
-                kind: "vertex.property.set",
-                id: `${vertexLabel}:${path[0]!}`,
+                kind: `${prefix}.property.set`,
+                id: `${label}:${path[0]!}`,
                 property: key,
-              });
+              } as YGraphChange);
             }
           } else {
             const [uuid, property, ...path] = event.path as [
@@ -133,71 +137,32 @@ function createGraphObserver<TSchema extends GraphSchema>(graph: YGraph<TSchema>
               continue;
             }
             o.next({
-              kind: "vertex.property.changed",
-              id: `${vertexLabel}:${uuid}`,
+              kind: `${prefix}.property.changed`,
+              id: `${label}:${uuid}`,
               property,
               path,
               event,
-            });
+            } as YGraphChange);
           }
         }
       };
       collection.observeDeep(observer);
       unsubscribers.push(() => collection.unobserveDeep(observer));
-    }
-    for (const edgeLabel of Object.keys(schema.edges)) {
-      const collection = storage.getEdgeCollectionMap(edgeLabel);
-      const observer = (events: Y.YEvent<any>[]) => {
-        for (const event of events) {
-          const { path } = event;
-          if (path.length === 0) {
-            if (event instanceof Y.YMapEvent) {
-              for (const [uuid, change] of event.changes.keys) {
-                if (change.action === "add") {
-                  o.next({
-                    kind: "edge.added",
-                    id: `${edgeLabel}:${uuid}`,
-                  });
-                } else if (change.action === "delete") {
-                  o.next({
-                    kind: "edge.deleted",
-                    id: `${edgeLabel}:${uuid}`,
-                  });
-                }
-              }
-            }
-          } else if (path.length === 1) {
-            for (const [key] of event.changes.keys) {
-              if (key.startsWith("@")) {
-                continue;
-              }
-              o.next({
-                kind: "edge.property.set",
-                id: `${edgeLabel}:${path[0]!}`,
-                property: key,
-              });
-            }
-          } else {
-            const [uuid, property, ...path] = event.path as [
-              string,
-              string,
-              ...(string | number)[],
-            ];
-            if (property.startsWith("@")) {
-              continue;
-            }
-            o.next({
-              kind: "edge.property.changed",
-              id: `${edgeLabel}:${uuid}`,
-              property,
-              path,
-              event,
-            });
-          }
-        }
-      };
-      collection.observeDeep(observer);
-      unsubscribers.push(() => collection.unobserveDeep(observer));
+    };
+
+    for (const { label, collection, prefix } of [
+      ...Object.keys(schema.vertices).map((vertexLabel) => ({
+        label: vertexLabel,
+        collection: storage.getVertexCollectionMap(vertexLabel),
+        prefix: "vertex" as const,
+      })),
+      ...Object.keys(schema.edges).map((edgeLabel) => ({
+        label: edgeLabel,
+        collection: storage.getEdgeCollectionMap(edgeLabel),
+        prefix: "edge" as const,
+      })),
+    ]) {
+      observeCollection(collection, prefix, label);
     }
 
     return () => {
@@ -297,59 +262,47 @@ export class LiveQuery<
 
 type QueryPredicate = (change: YGraphChange) => KnownSteps | undefined;
 
+function makeLifecyclePredicate(
+  step: KnownSteps,
+  kindPrefix: "vertex" | "edge",
+  idList: readonly ElementId[] | undefined,
+  labelList: readonly string[] | undefined,
+): QueryPredicate {
+  if (idList && idList.length > 0) {
+    return (change) => {
+      if (change.kind === `${kindPrefix}.added` || change.kind === `${kindPrefix}.deleted`) {
+        return idList!.includes(change.id) ? step : undefined;
+      }
+      return undefined;
+    };
+  } else if (labelList && labelList.length > 0) {
+    return (change) => {
+      if (change.kind === `${kindPrefix}.added` || change.kind === `${kindPrefix}.deleted`) {
+        return labelList!.includes(getLabelFromElementId(change.id)) ? step : undefined;
+      }
+      return undefined;
+    };
+  } else {
+    return (change) => {
+      if (change.kind === `${kindPrefix}.added` || change.kind === `${kindPrefix}.deleted`) {
+        return step;
+      }
+      return undefined;
+    };
+  }
+}
+
 function createPredicatesForTraversalSteps(steps: readonly KnownSteps[]): QueryPredicate {
   const predicates: QueryPredicate[] = [];
   for (const step of steps) {
     if (step instanceof FetchVerticesStep) {
-      if (step.config.ids && step.config.ids.length > 0) {
-        predicates.push((change) => {
-          if (change.kind === "vertex.added" || change.kind === "vertex.deleted") {
-            return step.config.ids!.includes(change.id) ? step : undefined;
-          }
-          return undefined;
-        });
-      } else if (step.config.vertexLabels && step.config.vertexLabels.length > 0) {
-        predicates.push((change) => {
-          if (change.kind === "vertex.added" || change.kind === "vertex.deleted") {
-            return step.config.vertexLabels!.includes(getLabelFromElementId(change.id))
-              ? step
-              : undefined;
-          }
-          return undefined;
-        });
-      } else {
-        predicates.push((change) => {
-          if (change.kind === "vertex.added" || change.kind === "vertex.deleted") {
-            return step ? step : undefined;
-          }
-          return undefined;
-        });
-      }
+      predicates.push(
+        makeLifecyclePredicate(step, "vertex", step.config.ids, step.config.vertexLabels),
+      );
     } else if (step instanceof FetchEdgesStep) {
-      if (step.config.ids && step.config.ids.length > 0) {
-        predicates.push((change) => {
-          if (change.kind === "edge.added" || change.kind === "edge.deleted") {
-            return step.config.ids!.includes(change.id) ? step : undefined;
-          }
-          return undefined;
-        });
-      } else if (step.config.edgeLabels && step.config.edgeLabels.length > 0) {
-        predicates.push((change) => {
-          if (change.kind === "edge.added" || change.kind === "edge.deleted") {
-            return step.config.edgeLabels!.includes(getLabelFromElementId(change.id))
-              ? step
-              : undefined;
-          }
-          return undefined;
-        });
-      } else {
-        predicates.push((change) => {
-          if (change.kind === "edge.added" || change.kind === "edge.deleted") {
-            return step;
-          }
-          return undefined;
-        });
-      }
+      predicates.push(
+        makeLifecyclePredicate(step, "edge", step.config.ids, step.config.edgeLabels),
+      );
     } else if (step instanceof FilterElementsStep) {
       predicates.push((change) => {
         if (change.kind === "vertex.property.set" || change.kind === "edge.property.set") {
@@ -359,23 +312,7 @@ function createPredicatesForTraversalSteps(steps: readonly KnownSteps[]): QueryP
         return undefined;
       });
     } else if (step instanceof VertexStep || step instanceof EdgeStep) {
-      if (step.config.edgeLabels.length > 0) {
-        predicates.push((change) => {
-          if (change.kind === "edge.added" || change.kind === "edge.deleted") {
-            return step.config.edgeLabels!.includes(getLabelFromElementId(change.id))
-              ? step
-              : undefined;
-          }
-          return undefined;
-        });
-      } else {
-        predicates.push((change) => {
-          if (change.kind === "edge.added" || change.kind === "edge.deleted") {
-            return step ? step : undefined;
-          }
-          return undefined;
-        });
-      }
+      predicates.push(makeLifecyclePredicate(step, "edge", undefined, step.config.edgeLabels));
     } else if (step instanceof RepeatStep) {
       predicates.push(createPredicatesForTraversalSteps(step.steps));
     }
