@@ -2261,12 +2261,6 @@ function convertConditionValue(
   }
 
   if (value.type === "PatternComprehension") {
-    // Convert the pattern to steps
-    // The pattern comprehension needs a WHERE clause wrapper if filterCondition is present
-    const _whereClause = value.filterCondition
-      ? { type: "WhereClause" as const, condition: value.filterCondition }
-      : undefined;
-
     // Convert pattern to steps - pattern comprehensions may reference outer scope variables
     // via patterns like (n)-[:KNOWS]->(m) where n is bound from outer context.
     // Pass anchoredToInput: true to enable anchor detection for such patterns.

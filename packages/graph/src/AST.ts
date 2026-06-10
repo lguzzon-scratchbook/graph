@@ -103,9 +103,22 @@ export type WithExpression =
   | ArithmeticExpression
   | ParameterRef;
 
+/** Aggregate function types supported in Cypher-like queries */
+export type AggregateFunction =
+  | "COUNT"
+  | "SUM"
+  | "AVG"
+  | "MIN"
+  | "MAX"
+  | "COLLECT"
+  | "STDEV"
+  | "STDEVP"
+  | "PERCENTILEDISC"
+  | "PERCENTILECONT";
+
 export interface WithAggregate {
   type: "WithAggregate";
-  function: "COUNT" | "SUM" | "AVG" | "MIN" | "MAX" | "COLLECT";
+  function: AggregateFunction;
   variable: string;
   property?: string;
 }
@@ -288,17 +301,7 @@ export interface ReturnItem {
   type: "ReturnItem";
   variable?: string;
   property?: string;
-  aggregate?:
-    | "COUNT"
-    | "SUM"
-    | "AVG"
-    | "MIN"
-    | "MAX"
-    | "COLLECT"
-    | "STDEV"
-    | "STDEVP"
-    | "PERCENTILEDISC"
-    | "PERCENTILECONT";
+  aggregate?: AggregateFunction;
   /** Whether DISTINCT is used with aggregate (e.g., count(DISTINCT x)) */
   distinct?: boolean;
   /** Percentile value for PERCENTILEDISC and PERCENTILECONT (0.0 to 1.0) */

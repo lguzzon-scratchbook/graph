@@ -6541,7 +6541,17 @@ export type WithItemConfig =
     }
   | {
       type: "aggregate";
-      function: "COUNT" | "SUM" | "AVG" | "MIN" | "MAX" | "COLLECT";
+      function:
+        | "COUNT"
+        | "SUM"
+        | "AVG"
+        | "MIN"
+        | "MAX"
+        | "COLLECT"
+        | "STDEV"
+        | "STDEVP"
+        | "PERCENTILEDISC"
+        | "PERCENTILECONT";
       sourceVariable: string;
       property?: string;
       alias: string;
