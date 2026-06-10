@@ -5,7 +5,11 @@
  * for dynamic step registration and AST conversion.
  */
 
-import { QueryUnionStep as BaseQueryUnionStep, type QueryUnionStepConfig } from "../../Steps.js";
+import {
+  QueryUnionStep as BaseQueryUnionStep,
+  type QueryUnionStepConfig,
+  type Step,
+} from "../../Steps.js";
 import { stepRegistry } from "../StepRegistry.js";
 
 /**
@@ -24,20 +28,36 @@ export class QueryUnionStep extends BaseQueryUnionStep {
    */
   static fromJSON(json: unknown): QueryUnionStep | null {
     if (!Array.isArray(json) || json.length < 2) return null;
-    const [name, config] = json;
+    const [name, config, rawBranches] = json;
     if (name !== "QueryUnion" && name !== "QueryUnionAll") return null;
 
     const cfg = config as QueryUnionStepConfig | undefined;
     if (typeof cfg?.all !== "boolean") return null;
 
-    // Note: Branches would need to be deserialized recursively
-    // For now, we just return the step with empty branches
+    const branches: Step<any>[][] =
+      rawBranches && Array.isArray(rawBranches)
+        ? rawBranches.map((branch: unknown) => {
+            if (!Array.isArray(branch)) return [];
+            return branch
+              .map((s: unknown) => {
+                if (Array.isArray(s) && s.length >= 2) {
+                  const def = stepRegistry.get(s[0] as string);
+                  if (def) {
+                    return stepRegistry.create(s[0] as string, s[1] as Record<string, unknown>);
+                  }
+                }
+                return null;
+              })
+              .filter((s): s is Step<any> => s !== null);
+          })
+        : [];
+
     return new QueryUnionStep(
       {
         all: cfg.all,
         stepLabels: cfg.stepLabels,
       },
-      [],
+      branches,
     );
   }
 
@@ -48,7 +68,7 @@ export class QueryUnionStep extends BaseQueryUnionStep {
         all: partial?.all ?? config.all,
         stepLabels: partial?.stepLabels ?? (config.stepLabels ? [...config.stepLabels] : undefined),
       },
-      [], // Branches would need to be re-cloned from original
+      this.branches.map((group) => group.map((step) => step.clone())),
     );
   }
 }

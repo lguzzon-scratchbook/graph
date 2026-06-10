@@ -30,16 +30,32 @@ export class IntersectStep<
    */
   static fromJSON(json: unknown): IntersectStep<readonly Step<any>[]> | null {
     if (!Array.isArray(json) || json.length < 3) return null;
-    const [name, config] = json;
+    const [name, config, nestedSteps] = json;
     if (name !== "Intersect") return null;
 
-    // Note: Nested steps would need to be deserialized recursively
-    // For now, we just return the step with empty nested steps
+    const cfg = config as IntersectStepConfig | undefined;
+    if (cfg && cfg.stepLabels !== undefined && !Array.isArray(cfg.stepLabels)) return null;
+
+    const steps: Step<any>[] =
+      nestedSteps && Array.isArray(nestedSteps)
+        ? nestedSteps
+            .map((s: unknown) => {
+              if (Array.isArray(s) && s.length >= 2) {
+                const def = stepRegistry.get(s[0] as string);
+                if (def) {
+                  return stepRegistry.create(s[0] as string, s[1] as Record<string, unknown>);
+                }
+              }
+              return null;
+            })
+            .filter((s): s is Step<any> => s !== null)
+        : [];
+
     return new IntersectStep(
       {
-        stepLabels: (config as { stepLabels?: string[] } | undefined)?.stepLabels,
+        stepLabels: cfg?.stepLabels,
       },
-      [],
+      steps,
     );
   }
 
