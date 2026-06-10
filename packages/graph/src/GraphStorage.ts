@@ -168,32 +168,46 @@ export class InMemoryGraphStorage implements GraphStorage {
     return this.#outgoingEdges;
   }
 
+  private *getElements<T extends StoredElement>(
+    map: Map<ElementId, T>,
+    labels: string[],
+  ): Iterable<T> {
+    // Snapshot keys to prevent infinite loops when elements are added during iteration.
+    // Keys are just strings so this is cheap; actual element data is still fetched lazily.
+    const keys = [...map.keys()];
+    for (const key of keys) {
+      const element = map.get(key);
+      if (
+        element !== undefined &&
+        (labels.length === 0 || labels.includes(getLabelFromElementId(element.id)))
+      ) {
+        yield element;
+      }
+    }
+  }
+
+  private *getElementsByIds<T extends StoredElement>(
+    map: Map<ElementId, T>,
+    ids: Iterable<ElementId>,
+  ): Iterable<T> {
+    for (const id of ids) {
+      const element = map.get(id);
+      if (element !== undefined) {
+        yield element;
+      }
+    }
+  }
+
   public getVertexById(id: ElementId): StoredVertex | undefined {
     return this.#vertices.get(id);
   }
 
   public *getVertices(labels: string[]): Iterable<StoredVertex> {
-    // Snapshot keys to prevent infinite loops when vertices are added during iteration.
-    // Keys are just strings so this is cheap; actual vertex data is still fetched lazily.
-    const keys = [...this.#vertices.keys()];
-    for (const key of keys) {
-      const vertex = this.#vertices.get(key);
-      if (
-        vertex !== undefined &&
-        (labels.length === 0 || labels.includes(getLabelFromElementId(vertex.id)))
-      ) {
-        yield vertex;
-      }
-    }
+    yield* this.getElements(this.#vertices, labels);
   }
 
   public *getVerticesByIds(ids: Iterable<ElementId>): Iterable<StoredVertex> {
-    for (const id of ids) {
-      const vertex = this.#vertices.get(id);
-      if (vertex !== undefined) {
-        yield vertex;
-      }
-    }
+    yield* this.getElementsByIds(this.#vertices, ids);
   }
 
   public getEdgeById(id: ElementId): StoredEdge | undefined {
@@ -201,27 +215,11 @@ export class InMemoryGraphStorage implements GraphStorage {
   }
 
   public *getEdges(labels: string[]): Iterable<StoredEdge> {
-    // Snapshot keys to prevent infinite loops when edges are added during iteration.
-    // Keys are just strings so this is cheap; actual edge data is still fetched lazily.
-    const keys = [...this.#edges.keys()];
-    for (const key of keys) {
-      const edge = this.#edges.get(key);
-      if (
-        edge !== undefined &&
-        (labels.length === 0 || labels.includes(getLabelFromElementId(edge.id)))
-      ) {
-        yield edge;
-      }
-    }
+    yield* this.getElements(this.#edges, labels);
   }
 
   public *getEdgesByIds(ids: Iterable<ElementId>): Iterable<StoredEdge> {
-    for (const id of ids) {
-      const edge = this.#edges.get(id);
-      if (edge !== undefined) {
-        yield edge;
-      }
-    }
+    yield* this.getElementsByIds(this.#edges, ids);
   }
 
   public addVertex(vertex: StoredVertex): void {
