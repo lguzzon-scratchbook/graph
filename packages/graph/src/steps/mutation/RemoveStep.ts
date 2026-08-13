@@ -5,8 +5,9 @@
  * for dynamic step registration and AST conversion.
  */
 
-import { RemoveStep as BaseRemoveStep, type RemoveStepConfig } from "../../Steps.js";
-import { stepRegistry } from "../StepRegistry.js";
+import { RemoveStep as BaseRemoveStep, type RemoveStepConfig, type RemoveStepItem } from "../../Steps.js";
+import { stepRegistry, type ASTConversionContext } from "../StepRegistry.js";
+import type { RemoveClause } from "../../AST.js";
 
 /**
  * RemoveStep implementation - source of truth remains in Steps.ts.
@@ -16,6 +17,30 @@ export class RemoveStep extends BaseRemoveStep {
   static readonly stepName = "Remove";
 
   static readonly category = "mutation" as const;
+
+  /**
+   * Convert a RemoveClause AST node into a RemoveStep.
+   * @param ast The RemoveClause AST node.
+   */
+  static fromAST(ast: RemoveClause, _context: ASTConversionContext): RemoveStep {
+    const items: RemoveStepItem[] = ast.items.map((item) => {
+      if (item.type === "RemoveProperty") {
+        return {
+          type: "property" as const,
+          variable: item.variable,
+          property: item.property,
+        };
+      } else {
+        // Label removal is not supported - validate early
+        throw new Error(
+          `REMOVE: Label removal is not supported. Labels are immutable. ` +
+            `Cannot remove label '${item.label}' from '${item.variable}'.`,
+        );
+      }
+    });
+
+    return new RemoveStep({ items });
+  }
 
   /**
    * Deserialize from JSON format.

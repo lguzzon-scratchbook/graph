@@ -10,7 +10,6 @@
 
 import type { Step, StepConfig } from "../Steps.js";
 import type { QueryContext } from "../QueryContext.js";
-import type { AST } from "../AST.js";
 
 /**
  * Step category for organization and filtering.
@@ -46,15 +45,15 @@ export interface StepConstructor {
   fromJSON(json: unknown): Step<StepConfig> | null;
 
   /** Create from AST node (optional - for steps that can be created from AST) */
-  fromAST?(astNode: AST, context: ASTConversionContext): Step<StepConfig> | null;
+  fromAST?(astNode: unknown, context: ASTConversionContext): Step<StepConfig> | null;
 }
 
 /**
  * Context for AST-to-step conversion.
  */
 export interface ASTConversionContext {
-  /** Query context for parameter resolution */
-  queryContext: QueryContext;
+  /** Query context for parameter resolution. Optional for conversions that do not resolve parameters (e.g. mutations). */
+  queryContext?: QueryContext;
 
   /** Available variable bindings */
   boundVariables: Set<string>;

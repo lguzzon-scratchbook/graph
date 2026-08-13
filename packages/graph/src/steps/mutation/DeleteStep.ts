@@ -6,7 +6,8 @@
  */
 
 import { DeleteStep as BaseDeleteStep, type DeleteStepConfig } from "../../Steps.js";
-import { stepRegistry } from "../StepRegistry.js";
+import { stepRegistry, type ASTConversionContext } from "../StepRegistry.js";
+import type { DeleteClause } from "../../AST.js";
 
 /**
  * DeleteStep implementation - source of truth remains in Steps.ts.
@@ -16,6 +17,17 @@ export class DeleteStep extends BaseDeleteStep {
   static readonly stepName = "Delete";
 
   static readonly category = "mutation" as const;
+
+  /**
+   * Convert a DeleteClause AST node into a DeleteStep.
+   * @param ast The DeleteClause AST node.
+   */
+  static fromAST(ast: DeleteClause, _context: ASTConversionContext): DeleteStep {
+    return new DeleteStep({
+      variables: ast.variables,
+      detach: ast.detach,
+    });
+  }
 
   /**
    * Deserialize from JSON format.

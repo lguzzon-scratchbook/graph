@@ -6,7 +6,10 @@
  */
 
 import { SetStep as BaseSetStep, type SetStepConfig } from "../../Steps.js";
-import { stepRegistry } from "../StepRegistry.js";
+import { stepRegistry, type ASTConversionContext } from "../StepRegistry.js";
+import type { SetClause, SetAllProperties, SetAddProperties } from "../../AST.js";
+import { convertSetMapValue, convertSetValue } from "../shared/astToStepsHelpers.js";
+import type { SetOperation } from "../../Steps.js";
 
 /**
  * SetStep implementation - source of truth remains in Steps.ts.
@@ -16,6 +19,41 @@ export class SetStep extends BaseSetStep {
   static readonly stepName = "Set";
 
   static readonly category = "mutation" as const;
+
+  /**
+   * Convert a SetClause AST node into a SetStep.
+   * @param ast The SetClause AST node.
+   */
+  static fromAST(ast: SetClause, _context: ASTConversionContext): SetStep {
+    const assignments: SetOperation[] = ast.assignments.map((assignment) => {
+      // Check for SetAllProperties or SetAddProperties (map-based assignments)
+      if ("type" in assignment) {
+        if (assignment.type === "SetAllProperties") {
+          const setAll = assignment as SetAllProperties;
+          return {
+            type: "setAllProperties" as const,
+            variable: setAll.variable,
+            properties: convertSetMapValue(setAll.properties),
+          };
+        } else if (assignment.type === "SetAddProperties") {
+          const setAdd = assignment as SetAddProperties;
+          return {
+            type: "setAddProperties" as const,
+            variable: setAdd.variable,
+            properties: convertSetMapValue(setAdd.properties),
+          };
+        }
+      }
+      // Individual property assignment: n.prop = value
+      return {
+        variable: assignment.variable,
+        property: assignment.property,
+        value: convertSetValue(assignment.value),
+      };
+    });
+
+    return new SetStep({ assignments });
+  }
 
   /**
    * Deserialize from JSON format.

@@ -108,6 +108,56 @@ import {
   type ExpressionReturnItem,
 } from "./Steps.js";
 import { functionArgExpectsPath } from "./FunctionRegistry.js";
+import { convertSetValue } from "./steps/shared/astToStepsHelpers.js";
+import { SetStep as MutSetStep } from "./steps/mutation/SetStep.js";
+import { CreateStep as MutCreateStep } from "./steps/mutation/CreateStep.js";
+import { DeleteStep as MutDeleteStep } from "./steps/mutation/DeleteStep.js";
+import { RemoveStep as MutRemoveStep } from "./steps/mutation/RemoveStep.js";
+import { MergeStep as MutMergeStep } from "./steps/mutation/MergeStep.js";
+import type { ASTConversionContext } from "./steps/StepRegistry.js";
+
+/**
+ * Lazily-shared conversion context. None of the mutation conversions resolve
+ * parameters or consult bound variables, so a single empty context is reused
+ * across all fromAST calls in a conversion pass.
+ */
+const MUTATION_CONVERSION_CONTEXT: ASTConversionContext = {
+  boundVariables: new Set<string>(),
+  schema: undefined,
+};
+
+/**
+ * The mutation step classes that implement `static fromAST`, keyed by the
+ * step name each wrapper registers under. The dispatcher routes each
+ * mutation-clause AST node here; conversion lives in the step's own module.
+ */
+type FromASTStep = typeof MutSetStep | typeof MutCreateStep | typeof MutDeleteStep |
+  typeof MutRemoveStep | typeof MutMergeStep;
+
+const MUTATION_FROM_AST: Record<string, FromASTStep> = {
+  Set: MutSetStep,
+  Create: MutCreateStep,
+  Delete: MutDeleteStep,
+  Remove: MutRemoveStep,
+  Merge: MutMergeStep,
+};
+
+/**
+ * Convert a mutation-clause AST node using the step's `fromAST`.
+ * @param name The registry step name (e.g. "Set", "Create").
+ * @param clause The mutation-clause AST node (e.g. a SetClause).
+ */
+function dispatchMutationFromAST(name: string, clause: unknown): import("./Steps.js").Step<any> {
+  const ctor = MUTATION_FROM_AST[name];
+  if (!ctor) {
+    throw new Error(`No fromAST converter registered for mutation step "${name}"`);
+  }
+  const step = ctor.fromAST(clause as never, MUTATION_CONVERSION_CONTEXT);
+  if (!step) {
+    throw new Error(`fromAST for mutation step "${name}" returned null`);
+  }
+  return step;
+}
 
 /**
  * Convert a parsed query AST into an array of Step instances
@@ -281,32 +331,28 @@ function processQuerySegments(segments: QuerySegment[], steps: Step<any>[]): voi
     // Process mutations (MERGE and CREATE) in their original order
     if (hasMutations) {
       for (const mutation of segment.mutations!) {
-        if (mutation.type === "MergeClause") {
-          const mergeStep = convertMergeClause(mutation);
-          steps.push(mergeStep);
-        } else if (mutation.type === "CreateClause") {
-          const createStep = convertCreateClause(mutation);
-          steps.push(createStep);
-        }
+        steps.push(
+          dispatchMutationFromAST(
+            mutation.type === "MergeClause" ? "Merge" : "Create",
+            mutation,
+          )!,
+        );
       }
     }
 
     // Process SET clause
     if (hasSet) {
-      const setStep = convertSetClause(segment.set!);
-      steps.push(setStep);
+      steps.push(dispatchMutationFromAST("Set", segment.set!)!);
     }
 
     // Process REMOVE clause
     if (hasRemove) {
-      const removeStep = convertRemoveClause(segment.remove!);
-      steps.push(removeStep);
+      steps.push(dispatchMutationFromAST("Remove", segment.remove!)!);
     }
 
     // Process DELETE clause
     if (hasDelete) {
-      const deleteStep = convertDeleteClause(segment.delete!);
-      steps.push(deleteStep);
+      steps.push(dispatchMutationFromAST("Delete", segment.delete!)!);
     }
 
     // Process WITH clause (transitions to next segment)
@@ -427,44 +473,35 @@ function processLegacyQuery(query: Query, steps: Step<any>[]): void {
   // otherwise fall back to separate merge/create fields for backwards compatibility
   if (query.mutations && query.mutations.length > 0) {
     for (const mutation of query.mutations) {
-      if (mutation.type === "MergeClause") {
-        const mergeStep = convertMergeClause(mutation);
-        steps.push(mergeStep);
-      } else if (mutation.type === "CreateClause") {
-        const createStep = convertCreateClause(mutation);
-        steps.push(createStep);
-      }
+      steps.push(
+        dispatchMutationFromAST(mutation.type === "MergeClause" ? "Merge" : "Create", mutation)!,
+      );
     }
   } else {
     // Backwards compatibility: process merge then create
     if (query.merge && query.merge.length > 0) {
       for (const mergeClause of query.merge) {
-        const mergeStep = convertMergeClause(mergeClause);
-        steps.push(mergeStep);
+        steps.push(dispatchMutationFromAST("Merge", mergeClause)!);
       }
     }
     if (query.create) {
-      const createStep = convertCreateClause(query.create);
-      steps.push(createStep);
+      steps.push(dispatchMutationFromAST("Create", query.create)!);
     }
   }
 
   // 5. Handle SET clause (mutations)
   if (query.set) {
-    const setStep = convertSetClause(query.set);
-    steps.push(setStep);
+    steps.push(dispatchMutationFromAST("Set", query.set)!);
   }
 
   // 6. Handle REMOVE clause
   if (query.remove) {
-    const removeStep = convertRemoveClause(query.remove);
-    steps.push(removeStep);
+    steps.push(dispatchMutationFromAST("Remove", query.remove)!);
   }
 
   // 7. Handle DELETE clause
   if (query.delete) {
-    const deleteStep = convertDeleteClause(query.delete);
-    steps.push(deleteStep);
+    steps.push(dispatchMutationFromAST("Delete", query.delete)!);
   }
 }
 
@@ -517,280 +554,6 @@ export function multiStatementToSteps(multiStatement: MultiStatement): readonly 
   return [new MultiQueryStep({}, statements as Step<any>[][])];
 }
 
-/**
- * Convert a SET clause into a SetStep.
- * Supports three types of assignments:
- * 1. Individual property: n.prop = value
- * 2. Replace all properties: n = {props}
- * 3. Add/merge properties: n += {props}
- */
-function convertSetClause(setClause: SetClause): SetStep {
-  const assignments: StepSetOperation[] = setClause.assignments.map((assignment) => {
-    // Check for SetAllProperties or SetAddProperties (map-based assignments)
-    if ("type" in assignment) {
-      if (assignment.type === "SetAllProperties") {
-        const setAll = assignment as SetAllProperties;
-        return {
-          type: "setAllProperties" as const,
-          variable: setAll.variable,
-          properties: convertSetMapValue(setAll.properties),
-        };
-      } else if (assignment.type === "SetAddProperties") {
-        const setAdd = assignment as SetAddProperties;
-        return {
-          type: "setAddProperties" as const,
-          variable: setAdd.variable,
-          properties: convertSetMapValue(setAdd.properties),
-        };
-      }
-    }
-    // Individual property assignment: n.prop = value
-    return {
-      variable: assignment.variable,
-      property: assignment.property,
-      value: convertSetValue(assignment.value),
-    };
-  });
-
-  return new SetStep({ assignments });
-}
-
-/**
- * Convert a SET map value (property map or parameter reference).
- */
-function convertSetMapValue(
-  value: Record<string, unknown> | { type: "ParameterRef"; name: string },
-): Record<string, unknown> | { type: "parameter"; name: string } {
-  // Check if it's a parameter reference
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    value.type === "ParameterRef"
-  ) {
-    return { type: "parameter", name: (value as { name: string }).name };
-  }
-  // It's a property map - convert any nested maps
-  return convertPropertyMap(value as Record<string, unknown>);
-}
-
-/**
- * Convert a property map, handling nested maps and parameter references.
- * Transforms NestedMap AST nodes into plain objects.
- */
-function convertPropertyMap(props: Record<string, unknown> | undefined): Record<string, unknown> {
-  if (!props) return {};
-
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(props)) {
-    result[key] = convertNestedPropertyValue(value);
-  }
-  return result;
-}
-
-/**
- * Convert a single property value, handling NestedMap, ListLiteral, and ParameterRef.
- */
-function convertNestedPropertyValue(value: unknown): unknown {
-  if (value === null || value === undefined) {
-    return value;
-  }
-
-  if (typeof value !== "object") {
-    return value;
-  }
-
-  const obj = value as Record<string, unknown>;
-
-  // Handle NestedMap - convert to plain object recursively
-  if (obj.type === "NestedMap") {
-    return convertPropertyMap(obj.value as Record<string, unknown>);
-  }
-
-  // Handle ListLiteral - convert to plain array recursively
-  if (obj.type === "ListLiteral") {
-    return (obj.values as unknown[]).map(convertNestedPropertyValue);
-  }
-
-  // Handle ParameterRef - preserve as-is for runtime resolution
-  // The Steps expect the original ParameterRef format
-  if (obj.type === "ParameterRef") {
-    return obj;
-  }
-
-  // For other objects (shouldn't happen in valid AST), return as-is
-  return value;
-}
-
-/**
- * Convert a CREATE clause into a CreateStep.
- * Handles both simple node patterns and chain patterns (with relationships).
- *
- * Chain patterns like: (t)-[:Contains]->(:Attr {props})-[:IsA]->(s)
- * Are processed to extract all nodes that need to be created and all edges,
- * respecting the order so that variables created earlier can be referenced later.
- */
-function convertCreateClause(createClause: CreateClause): CreateStep {
-  const vertices: CreateVertexConfig[] = [];
-  const edges: CreateEdgeConfig[] = [];
-
-  // Track variables assigned to nodes (including generated ones for anonymous nodes)
-  // Maps from the node object reference to the assigned variable name
-  const nodeVariables = new Map<CreateNodePattern | CreateVariableRef, string>();
-
-  // Counter for generating unique anonymous variable names
-  let anonCounter = 0;
-
-  for (const pattern of createClause.patterns) {
-    if (pattern.type === "CreateNodePattern") {
-      // Simple standalone node creation
-      const nodePattern = pattern as CreateNodePattern;
-      vertices.push({
-        variable: nodePattern.variable,
-        label: nodePattern.labels[0] || "Node",
-        properties: convertPropertyMap(nodePattern.properties),
-      });
-    } else if (pattern.type === "CreateChainPattern") {
-      // Chain pattern: process nodes and edges in sequence
-      const chain = pattern as CreateChainPattern;
-      const elements = chain.elements;
-
-      // First pass: assign variables to all nodes and collect nodes to create
-      // We need to create nodes before edges so that edge endpoints can reference them
-      for (let i = 0; i < elements.length; i += 2) {
-        const nodeElement = elements[i] as CreateNodePattern | CreateVariableRef;
-
-        if (nodeElement.type === "CreateVariableRef") {
-          // Reference to existing node - use its variable
-          nodeVariables.set(nodeElement, nodeElement.variable);
-        } else {
-          // CreateNodePattern - new node to create (with or without labels)
-          const nodePattern = nodeElement as CreateNodePattern;
-          // New node to create - assign variable (use existing or generate)
-          const variable = nodePattern.variable || `__anon_${anonCounter++}`;
-          nodeVariables.set(nodeElement, variable);
-          vertices.push({
-            variable,
-            // Use first label if provided, otherwise use empty string for unlabeled nodes
-            label: nodePattern.labels[0] || "",
-            properties: convertPropertyMap(nodePattern.properties),
-          });
-        }
-      }
-
-      // Second pass: collect all edges using assigned variables
-      for (let i = 1; i < elements.length; i += 2) {
-        const edgeElement = elements[i] as CreateEdgePattern;
-        const prevNode = elements[i - 1] as CreateNodePattern | CreateVariableRef;
-        const nextNode = elements[i + 1] as CreateNodePattern | CreateVariableRef;
-
-        const startVariable = nodeVariables.get(prevNode);
-        const endVariable = nodeVariables.get(nextNode);
-
-        if (!startVariable || !endVariable) {
-          throw new Error("CREATE: Internal error - node variable not assigned");
-        }
-
-        const edgeConfig: CreateEdgeConfig = {
-          variable: edgeElement.variable,
-          label: edgeElement.label,
-          direction: edgeElement.direction,
-          properties: convertPropertyMap(edgeElement.properties),
-          startVariable,
-          endVariable,
-        };
-
-        edges.push(edgeConfig);
-      }
-    }
-  }
-
-  return new CreateStep({
-    vertices,
-    edges: edges.length > 0 ? edges : undefined,
-  });
-}
-
-/**
- * Convert a DELETE clause into a DeleteStep.
- */
-function convertDeleteClause(deleteClause: DeleteClause): DeleteStep {
-  return new DeleteStep({
-    variables: deleteClause.variables,
-    detach: deleteClause.detach,
-  });
-}
-
-/**
- * Convert a REMOVE clause into a RemoveStep.
- */
-function convertRemoveClause(removeClause: RemoveClause): RemoveStep {
-  const items: RemoveStepItem[] = removeClause.items.map((item) => {
-    if (item.type === "RemoveProperty") {
-      return {
-        type: "property" as const,
-        variable: item.variable,
-        property: item.property,
-      };
-    } else {
-      // Label removal is not supported - validate early
-      throw new Error(
-        `REMOVE: Label removal is not supported. Labels are immutable. ` +
-          `Cannot remove label '${item.label}' from '${item.variable}'.`,
-      );
-    }
-  });
-
-  return new RemoveStep({ items });
-}
-
-/**
- * Convert a MERGE clause into a MergeStep.
- */
-function convertMergeClause(mergeClause: MergeClause): MergeStep {
-  let pattern: MergePatternConfig;
-
-  if (mergeClause.pattern.type === "NodePattern") {
-    const nodePattern = mergeClause.pattern as NodePattern;
-    pattern = {
-      type: "node",
-      variable: nodePattern.variable,
-      labels: nodePattern.labels,
-      properties: convertPropertyMap(nodePattern.properties),
-    };
-  } else if (mergeClause.pattern.type === "MergeRelationshipPattern") {
-    const relPattern = mergeClause.pattern as MergeRelationshipPattern;
-    pattern = {
-      type: "edge",
-      variable: relPattern.edge.variable,
-      label: relPattern.edge.label,
-      direction: relPattern.edge.direction,
-      properties: convertPropertyMap(relPattern.edge.properties),
-      startVariable: relPattern.startVariable,
-      endVariable: relPattern.endVariable,
-    };
-  } else {
-    throw new Error(`Unknown MERGE pattern type: ${(mergeClause.pattern as any).type}`);
-  }
-
-  return new MergeStep({
-    pattern,
-    onCreate: mergeClause.onCreate
-      ? mergeClause.onCreate.assignments.map((a) => ({
-          variable: a.variable,
-          property: a.property,
-          value: convertSetValue(a.value),
-        }))
-      : undefined,
-    onMatch: mergeClause.onMatch
-      ? mergeClause.onMatch.assignments.map((a) => ({
-          variable: a.variable,
-          property: a.property,
-          value: convertSetValue(a.value),
-        }))
-      : undefined,
-  });
-}
 
 /**
  * Convert a WITH clause into a WithStep.
@@ -1009,56 +772,6 @@ function convertCallClause(callClause: CallClause): CallStep {
   });
 }
 
-/**
- * Convert a SetValue AST node to a SetAssignmentValue.
- */
-function convertSetValue(value: SetValue): SetAssignmentValue {
-  // Handle literal values (primitives)
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    value === null
-  ) {
-    return { type: "literal", value };
-  }
-
-  // Handle PropertyAccess
-  if (value.type === "PropertyAccess") {
-    return {
-      type: "property",
-      variable: value.variable,
-      property: value.property,
-    };
-  }
-
-  // Handle VariableRef
-  if (value.type === "VariableRef") {
-    return { type: "variable", variable: value.variable };
-  }
-
-  // Handle ParameterRef
-  if (value.type === "ParameterRef") {
-    return { type: "parameter", name: value.name };
-  }
-
-  // Handle ListLiteral
-  if (value.type === "ListLiteral") {
-    return { type: "list", values: value.values as unknown[] };
-  }
-
-  // Handle NestedMap (JSON object value)
-  if (value.type === "NestedMap") {
-    return {
-      type: "literal",
-      value: convertPropertyMap(value.value as Record<string, unknown>),
-    };
-  }
-
-  // This should never happen given the SetValue type definition
-  // If it does, it's a parser bug or type mismatch
-  throw new Error(`Unexpected SetValue type: ${JSON.stringify(value)}`);
-}
 
 /**
  * Convert a FOREACH clause into a ForeachStep.
