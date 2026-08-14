@@ -5,8 +5,26 @@
  * for dynamic step registration and AST conversion.
  */
 
-import { ForeachStep as BaseForeachStep, type ForeachStepConfig, type Step } from "../../Steps.js";
-import { stepRegistry } from "../StepRegistry.js";
+import {
+  ForeachStep as BaseForeachStep,
+  type ForeachStepConfig,
+  type Step,
+  type ForeachListExpression,
+} from "../../Steps.js";
+import { stepRegistry, type ASTConversionContext } from "../StepRegistry.js";
+import type {
+  ForeachClause,
+  ListExpression,
+  SetOperation as ASTSetOperation,
+  DeleteOperation as ASTDeleteOperation,
+  MatchClause,
+  Pattern,
+  ShortestPathPattern,
+} from "../../AST.js";
+import { convertSetValue } from "../shared/astToStepsHelpers.js";
+import { convertConditionValue, convertPattern, convertShortestPathPattern } from "../shared/patternToSteps.js";
+import { DeleteStep } from "../mutation/DeleteStep.js";
+import { SetStep } from "../mutation/SetStep.js";
 
 /**
  * ForeachStep implementation - source of truth remains in Steps.ts.
@@ -19,6 +37,93 @@ export class ForeachStep<
   static readonly stepName = "Foreach";
 
   static readonly category = "control" as const;
+
+  /**
+   * Convert a ForeachClause AST node into a ForeachStep.
+   */
+  static fromAST(
+    ast: ForeachClause,
+    _context: ASTConversionContext,
+  ): ForeachStep<Step<any>[]> {
+    const { variable, listExpression, operations } = ast;
+
+    // Convert the list expression
+    const stepListExpression = ForeachStep.convertListExpression(listExpression);
+
+    // Convert the operations to inner steps
+    const innerSteps: Step<any>[] = [];
+    for (const operation of operations) {
+      if (operation.type === "SetOperation") {
+        const setOp = operation as ASTSetOperation;
+        const assignments = setOp.assignments.map((assignment) => ({
+          variable: assignment.variable,
+          property: assignment.property,
+          value: convertSetValue(assignment.value),
+        }));
+        innerSteps.push(new SetStep({ assignments }));
+      } else if (operation.type === "DeleteOperation") {
+        // Convert DELETE/DETACH DELETE operations inside FOREACH
+        const deleteOp = operation as ASTDeleteOperation;
+        innerSteps.push(
+          new DeleteStep({
+            variables: deleteOp.variables,
+            detach: deleteOp.detach,
+          }),
+        );
+      } else if (operation.type === "MatchClause") {
+        // Convert MATCH operations inside FOREACH
+        const matchClause = operation as MatchClause;
+        const matchPattern = matchClause.pattern;
+        if (matchPattern.type === "ShortestPathPattern") {
+          innerSteps.push(
+            ...convertShortestPathPattern(matchPattern as ShortestPathPattern, matchClause.where),
+          );
+        } else {
+          innerSteps.push(...convertPattern(matchPattern as Pattern, matchClause.where));
+        }
+      }
+    }
+
+    return new ForeachStep(
+      {
+        variable,
+        listExpression: stepListExpression,
+      },
+      innerSteps,
+    );
+  }
+
+  /**
+   * Convert a ListExpression AST node to a ForeachListExpression.
+   */
+  private static convertListExpression(expr: ListExpression): ForeachListExpression {
+    if (expr.type === "ListLiteral") {
+      return {
+        type: "literal",
+        values: expr.values as readonly (string | number | boolean | null)[],
+      };
+    } else if (expr.type === "PropertyAccess") {
+      return {
+        type: "property",
+        variable: expr.variable,
+        property: expr.property,
+      };
+    } else if (expr.type === "VariableRef") {
+      return {
+        type: "variable",
+        variable: expr.variable,
+      };
+    } else if (expr.type === "FunctionCall") {
+      // Function calls like tail(nodes) used as list expression
+      return {
+        type: "functionCall",
+        name: expr.name,
+        args: expr.args.map((arg) => convertConditionValue(arg)),
+        distinct: expr.distinct,
+      };
+    }
+    throw new Error(`Unknown list expression type: ${(expr as { type?: string }).type}`);
+  }
 
   /**
    * Deserialize from JSON format.

@@ -5,8 +5,10 @@
  * for dynamic step registration and AST conversion.
  */
 
-import { CallStep as BaseCallStep, type CallStepConfig } from "../../Steps.js";
-import { stepRegistry } from "../StepRegistry.js";
+import { CallStep as BaseCallStep, type CallStepConfig, type YieldItemConfig } from "../../Steps.js";
+import { stepRegistry, type ASTConversionContext } from "../StepRegistry.js";
+import type { CallClause, YieldItem } from "../../AST.js";
+import { convertConditionValue } from "../shared/patternToSteps.js";
 
 /**
  * CallStep implementation - source of truth remains in Steps.ts.
@@ -17,6 +19,24 @@ export class CallStep extends BaseCallStep {
   static readonly stepName = "Call";
 
   static readonly category = "transform" as const;
+
+  /**
+   * Convert a CallClause AST node into a CallStep.
+   */
+  static fromAST(ast: CallClause, _context: ASTConversionContext): CallStep {
+    // Convert arguments (expressions) to condition values
+    const args = ast.arguments.map((arg) => convertConditionValue(arg));
+    // Convert yield items
+    const yieldItems: YieldItemConfig[] | undefined = ast.yield?.map((item: YieldItem) => ({
+      name: item.name,
+      alias: item.alias,
+    }));
+    return new CallStep({
+      procedureName: ast.procedure,
+      arguments: args,
+      yieldItems,
+    });
+  }
 
   /**
    * Deserialize from JSON format.

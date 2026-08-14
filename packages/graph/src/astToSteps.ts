@@ -9,17 +9,10 @@ import type {
   Condition,
   ShortestPathPattern,
   SetClause,
-  ForeachClause,
-  SetOperation as ASTSetOperation,
-  DeleteOperation as ASTDeleteOperation,
-  ListExpression,
-  MatchClause,
   MergeClause,
   MultiPattern,
   WithClause,
   WithItem,
-  CallClause,
-  YieldItem,
   ParenthesizedPathPattern,
   FunctionCall,
   OrderItem,
@@ -44,19 +37,13 @@ import {
   ValuesStep,
   PropertyValuesStep,
   LabelsStep,
-  SetStep,
-  ForeachStep,
-  DeleteStep,
   StartStep,
   DrainStep,
   WithStep,
-  CallStep,
   QueryUnionStep,
   GroupByStep,
   type ConditionValue,
-  type YieldItemConfig,
   type OrderDirection,
-  type ForeachListExpression,
   type WithItemConfig,
   SelectStep,
   OptionalMatchStep,
@@ -85,6 +72,8 @@ import { DeleteStep as MutDeleteStep } from "./steps/mutation/DeleteStep.js";
 import { RemoveStep as MutRemoveStep } from "./steps/mutation/RemoveStep.js";
 import { MergeStep as MutMergeStep } from "./steps/mutation/MergeStep.js";
 import { UnwindStep as MutUnwindStep } from "./steps/control/UnwindStep.js";
+import { ForeachStep as MutForeachStep } from "./steps/control/ForeachStep.js";
+import { CallStep as MutCallStep } from "./steps/transform/CallStep.js";
 import type { ASTConversionContext } from "./steps/StepRegistry.js";
 
 /**
@@ -285,16 +274,14 @@ function processQuerySegments(segments: QuerySegment[], steps: Step<any>[]): voi
     // Process CALL clauses
     if (hasCall) {
       for (const callClause of segment.call!) {
-        const callStep = convertCallClause(callClause);
-        steps.push(callStep);
+        steps.push(MutCallStep.fromAST(callClause, MUTATION_CONVERSION_CONTEXT));
       }
     }
 
     // Process FOREACH clauses
     if (hasForeach) {
       for (const foreachClause of segment.foreach!) {
-        const foreachStep = convertForeachClause(foreachClause);
-        steps.push(foreachStep);
+        steps.push(MutForeachStep.fromAST(foreachClause, MUTATION_CONVERSION_CONTEXT));
       }
     }
 
@@ -424,16 +411,14 @@ function processLegacyQuery(query: Query, steps: Step<any>[]): void {
   // 1e. Handle CALL clauses (procedure invocation)
   if (query.call && query.call.length > 0) {
     for (const callClause of query.call) {
-      const callStep = convertCallClause(callClause);
-      steps.push(callStep);
+      steps.push(MutCallStep.fromAST(callClause, MUTATION_CONVERSION_CONTEXT));
     }
   }
 
   // 2. Handle FOREACH clauses
   if (query.foreach && query.foreach.length > 0) {
     for (const foreachClause of query.foreach) {
-      const foreachStep = convertForeachClause(foreachClause);
-      steps.push(foreachStep);
+      steps.push(MutForeachStep.fromAST(foreachClause, MUTATION_CONVERSION_CONTEXT));
     }
   }
 
@@ -632,136 +617,6 @@ function convertWithItem(item: WithItem): WithItemConfig {
     alias: item.alias,
   };
 }
-function convertCallClause(callClause: CallClause): CallStep {
-  // Convert arguments (expressions) to condition values
-  const args = callClause.arguments.map((arg) => convertConditionValue(arg));
-
-  // Convert yield items
-  const yieldItems: YieldItemConfig[] | undefined = callClause.yield?.map((item: YieldItem) => ({
-    name: item.name,
-    alias: item.alias,
-  }));
-
-  return new CallStep({
-    procedureName: callClause.procedure,
-    arguments: args,
-    yieldItems,
-  });
-}
-
-
-/**
- * Convert a FOREACH clause into a ForeachStep.
- */
-function convertForeachClause(foreachClause: ForeachClause): ForeachStep<Step<any>[]> {
-  const { variable, listExpression, operations } = foreachClause;
-
-  // Convert the list expression
-  const stepListExpression = convertListExpression(listExpression);
-
-  // Convert the operations to inner steps
-  const innerSteps: Step<any>[] = [];
-  for (const operation of operations) {
-    if (operation.type === "SetOperation") {
-      const setOp = operation as ASTSetOperation;
-      const setStep = convertSetOperationToStep(setOp);
-      innerSteps.push(setStep);
-    } else if (operation.type === "DeleteOperation") {
-      // Convert DELETE/DETACH DELETE operations inside FOREACH
-      const deleteOp = operation as ASTDeleteOperation;
-      const deleteStep = new DeleteStep({
-        variables: deleteOp.variables,
-        detach: deleteOp.detach,
-      });
-      innerSteps.push(deleteStep);
-    } else if (operation.type === "MatchClause") {
-      // Convert MATCH operations inside FOREACH
-      const matchClause = operation as MatchClause;
-      const matchPattern = matchClause.pattern;
-
-      if (matchPattern.type === "ShortestPathPattern") {
-        // Convert shortestPath pattern to steps
-        const shortestPathSteps = convertShortestPathPattern(
-          matchPattern as ShortestPathPattern,
-          matchClause.where,
-        );
-        innerSteps.push(...shortestPathSteps);
-      } else {
-        // Regular pattern - convert to steps
-        const matchSteps = convertPattern(matchPattern as Pattern, matchClause.where);
-        innerSteps.push(...matchSteps);
-      }
-    }
-  }
-
-  return new ForeachStep(
-    {
-      variable,
-      listExpression: stepListExpression,
-    },
-    innerSteps,
-  );
-}
-
-/**
- * Convert a ListExpression AST node to a ForeachListExpression.
- */
-function convertListExpression(expr: ListExpression): ForeachListExpression {
-  if (expr.type === "ListLiteral") {
-    // ListLiteral from FOREACH grammar only contains literals
-    return {
-      type: "literal",
-      values: expr.values as readonly (string | number | boolean | null)[],
-    };
-  } else if (expr.type === "PropertyAccess") {
-    return {
-      type: "property",
-      variable: expr.variable,
-      property: expr.property,
-    };
-  } else if (expr.type === "VariableRef") {
-    return {
-      type: "variable",
-      variable: expr.variable,
-    };
-  } else if (expr.type === "FunctionCall") {
-    // Function calls like tail(nodes) used as list expression
-    return {
-      type: "functionCall",
-      name: expr.name,
-      args: expr.args.map((arg) => convertConditionValue(arg)),
-      distinct: expr.distinct,
-    };
-  }
-
-  throw new Error(`Unknown list expression type: ${(expr as any).type}`);
-}
-
-/**
- * Convert a SetOperation (from FOREACH) into a SetStep.
- * Note: FOREACH SET operations currently only support individual property assignments,
- * not bulk property operations (n = {props} or n += {props}).
- */
-function convertSetOperationToStep(setOp: ASTSetOperation): SetStep {
-  const assignments = setOp.assignments.map((assignment) => ({
-    variable: assignment.variable,
-    property: assignment.property,
-    value: convertSetValue(assignment.value),
-  }));
-
-  return new SetStep({ assignments });
-}
-
-/**
- * Convert a ShortestPathPattern into a sequence of steps.
- * Uses ShortestPathStep with BFS/Dijkstra algorithm.
- *
- * TODO: The pattern.all field (for allShortestPaths) currently throws an error.
- * Only a single shortest path is supported. Implement support for finding
- * all shortest paths when pattern.all is true.
- *
- * @throws {Error} When pattern.all is true (allShortestPaths not implemented)
- */
 function extractBoundVariables(query: Query): string[] {
   const variables: string[] = [];
 
