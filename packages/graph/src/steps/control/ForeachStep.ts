@@ -22,7 +22,11 @@ import type {
   ShortestPathPattern,
 } from "../../AST.js";
 import { convertSetValue } from "../shared/astToStepsHelpers.js";
-import { convertConditionValue, convertPattern, convertShortestPathPattern } from "../shared/patternToSteps.js";
+import {
+  convertConditionValue,
+  convertPattern,
+  convertShortestPathPattern,
+} from "../shared/patternToSteps.js";
 import { DeleteStep } from "../mutation/DeleteStep.js";
 import { SetStep } from "../mutation/SetStep.js";
 

@@ -77,11 +77,11 @@ import { CallStep as MutCallStep } from "./steps/transform/CallStep.js";
 import type { ASTConversionContext } from "./steps/StepRegistry.js";
 
 /**
- * Lazily-shared conversion context. None of the mutation conversions resolve
- * parameters or consult bound variables, so a single empty context is reused
- * across all fromAST calls in a conversion pass.
+ * Lazily-shared conversion context. None of the current fromAST conversions
+ * resolve parameters or consult bound variables, so a single empty context is
+ * reused across all fromAST calls in a conversion pass.
  */
-const MUTATION_CONVERSION_CONTEXT: ASTConversionContext = {
+const CONVERSION_CONTEXT: ASTConversionContext = {
   boundVariables: new Set<string>(),
   schema: undefined,
 };
@@ -112,7 +112,7 @@ function dispatchMutationFromAST(name: string, clause: unknown): import("./Steps
   if (!ctor) {
     throw new Error(`No fromAST converter registered for mutation step "${name}"`);
   }
-  const step = ctor.fromAST(clause as never, MUTATION_CONVERSION_CONTEXT);
+  const step = ctor.fromAST(clause as never, CONVERSION_CONTEXT);
   if (!step) {
     throw new Error(`fromAST for mutation step "${name}" returned null`);
   }
@@ -267,21 +267,21 @@ function processQuerySegments(segments: QuerySegment[], steps: Step<any>[]): voi
     // Process UNWIND clauses
     if (hasUnwind) {
       for (const unwindClause of segment.unwind!) {
-        steps.push(MutUnwindStep.fromAST(unwindClause, MUTATION_CONVERSION_CONTEXT));
+        steps.push(MutUnwindStep.fromAST(unwindClause, CONVERSION_CONTEXT));
       }
     }
 
     // Process CALL clauses
     if (hasCall) {
       for (const callClause of segment.call!) {
-        steps.push(MutCallStep.fromAST(callClause, MUTATION_CONVERSION_CONTEXT));
+        steps.push(MutCallStep.fromAST(callClause, CONVERSION_CONTEXT));
       }
     }
 
     // Process FOREACH clauses
     if (hasForeach) {
       for (const foreachClause of segment.foreach!) {
-        steps.push(MutForeachStep.fromAST(foreachClause, MUTATION_CONVERSION_CONTEXT));
+        steps.push(MutForeachStep.fromAST(foreachClause, CONVERSION_CONTEXT));
       }
     }
 
@@ -404,21 +404,21 @@ function processLegacyQuery(query: Query, steps: Step<any>[]): void {
   // 1d. Handle UNWIND clauses (list expansion)
   if (query.unwind && query.unwind.length > 0) {
     for (const unwindClause of query.unwind) {
-      steps.push(MutUnwindStep.fromAST(unwindClause, MUTATION_CONVERSION_CONTEXT));
+      steps.push(MutUnwindStep.fromAST(unwindClause, CONVERSION_CONTEXT));
     }
   }
 
   // 1e. Handle CALL clauses (procedure invocation)
   if (query.call && query.call.length > 0) {
     for (const callClause of query.call) {
-      steps.push(MutCallStep.fromAST(callClause, MUTATION_CONVERSION_CONTEXT));
+      steps.push(MutCallStep.fromAST(callClause, CONVERSION_CONTEXT));
     }
   }
 
   // 2. Handle FOREACH clauses
   if (query.foreach && query.foreach.length > 0) {
     for (const foreachClause of query.foreach) {
-      steps.push(MutForeachStep.fromAST(foreachClause, MUTATION_CONVERSION_CONTEXT));
+      steps.push(MutForeachStep.fromAST(foreachClause, CONVERSION_CONTEXT));
     }
   }
 
